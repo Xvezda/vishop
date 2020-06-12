@@ -111,9 +111,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--username', '-u')
     parser.add_argument('--password', '-p')
-    parser.add_argument('--config', '-c', help='set configuration file. Default file is "vipers.json"')
+    parser.add_argument('--config', '-c',
+                        help='set configuration file. '
+                        'Default file is "vipers.json"',
+                        default='vipers.json')
     parser.add_argument('--verbose', '-v', action='count', default=0)
-    parser.add_argument('--output', '-o')
+    parser.add_argument('--output', '-o', default='dist')
     parser.add_argument('paths', nargs='+')
     args = parser.parse_args()
 
