@@ -109,15 +109,23 @@ def main():
         pass
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--username', '-u')
-    parser.add_argument('--password', '-p')
-    parser.add_argument('--config', '-c',
-                        help='set configuration file. '
-                        'Default file is "vipers.json"',
-                        default='vipers.json')
-    parser.add_argument('--verbose', '-v', action='count', default=0)
-    parser.add_argument('--output', '-o', default='dist')
-    parser.add_argument('paths', nargs='+')
+    parser.add_argument('--verbose', '-v', action='count', default=0,
+                        help='set logging verbosity')
+
+    subparsers = parser.add_subparsers(dest='command')
+    build_parser = subparsers.add_parser('build')
+    build_parser.add_argument('--output', '-o', default='dist')
+    build_parser.add_argument('paths', nargs='+')
+
+    publish_parser = subparsers.add_parser('publish')
+    publish_parser.add_argument('--username', '-u')
+    publish_parser.add_argument('--password', '-p')
+    publish_parser.add_argument('--config', '-c',
+                                help='set configuration file. '
+                                'Default file is "vipers.json"',
+                                default='vipers.json')
+    clean_parser = subparsers.add_parser('clean')
+
     args = parser.parse_args()
 
     for path_ in args.paths:

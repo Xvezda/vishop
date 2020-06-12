@@ -2,9 +2,9 @@
 
 VIM script publisher client
 
-# FAQ
+## FAQ
 
-## Why Python?
+> Why Python?
 
 Because VIM supports python command (see `:help python`).
 It will much easier when you develop your own VIM plugin using vipers module,
