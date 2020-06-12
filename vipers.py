@@ -111,19 +111,29 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--verbose', '-v', action='count', default=0,
                         help='set logging verbosity')
+    parser.add_argument('--config', '-c',
+                        help='set configuration file. '
+                        'Default file is "vipers.json"',
+                        default='vipers.json')
 
     subparsers = parser.add_subparsers(dest='command')
-    build_parser = subparsers.add_parser('build')
+
+    # TODO: We need interactive interface
+    init_parser = subparsers.add_parser('init',
+                                        help='create configuration file')
+
+    # TODO: What about zip alternative formats? (i.e. tar.gz)
+    build_parser = subparsers.add_parser('build',
+                                         help='create zip bundle to publish')
     build_parser.add_argument('--output', '-o', default='dist')
     build_parser.add_argument('paths', nargs='+')
 
-    publish_parser = subparsers.add_parser('publish')
+    # TODO: Show contents before publishing
+    #       Option for non-build publishing
+    publish_parser = subparsers.add_parser('publish',
+                                           help='publish zip file')
     publish_parser.add_argument('--username', '-u')
     publish_parser.add_argument('--password', '-p')
-    publish_parser.add_argument('--config', '-c',
-                                help='set configuration file. '
-                                'Default file is "vipers.json"',
-                                default='vipers.json')
     clean_parser = subparsers.add_parser('clean')
 
     args = parser.parse_args()
