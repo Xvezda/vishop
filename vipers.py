@@ -10,9 +10,14 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import argparse
+
 
 def main():
-    pass
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--config', '-c', help='Set configuration file. Default file is "vipers.json"')
+    parser.add_argument('paths', nargs='+')
+    args = parser.parse_args()
 
 
 if __name__ == '__main__':
