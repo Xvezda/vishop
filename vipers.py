@@ -13,8 +13,12 @@ from __future__ import print_function
 import re
 import os
 import sys
+import json
+import zipfile
 import argparse
 import requests
+
+from os import path
 
 import logging
 logger = logging.getLogger(__name__)
@@ -60,12 +64,15 @@ class ViperClient(BaseClient):
         self.username = username or os.getenv('VIPERS_USERNAME')
         self.password = password or os.getenv('VIPERS_PASSWORD')
 
-        if not sys.stdin.isatty():
-            return
+        if (not sys.stdin.isatty()
+                and (not self.username or not self.password)):
+            raise ViperError('username or password required')
 
-        if not username or not password:
-            import getpass
+        if not self.username:
             self.username = input('username or email: ')
+
+        if not self.password:
+            import getpass
             self.password = getpass.getpass('password: ')
 
     def login(self):
@@ -105,9 +112,14 @@ def main():
     parser.add_argument('--username', '-u')
     parser.add_argument('--password', '-p')
     parser.add_argument('--config', '-c', help='set configuration file. Default file is "vipers.json"')
-    parser.add_argument("--verbose", "-v", action="count", default=0)
+    parser.add_argument('--verbose', '-v', action='count', default=0)
+    parser.add_argument('--output', '-o')
     parser.add_argument('paths', nargs='+')
     args = parser.parse_args()
+
+    for path_ in args.paths:
+        if not path.isdir(path_):
+            parser.error('"%s" is not a directory' % path_)
 
     if args.verbose == 1:
         logger.setLevel(logging.INFO)
