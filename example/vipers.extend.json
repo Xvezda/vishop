@@ -1,0 +1,13 @@
+{
+  "name": "script name",
+  "author": "Xvezda <xvezda@naver.com>",
+  "homepage": "https://github.com/Xvezda",
+  "type": "color scheme|ftplugin|game|indent|syntax|utility|patch",
+  "summary": "summary here",
+  "description": "detailed description",
+  "install_detail": "install details (optional)",
+  "version": "1.0",
+  "required": "7.0",
+  "excludes": ["**/foo/bar", "hello-world.txt"],
+  "private": true
+}

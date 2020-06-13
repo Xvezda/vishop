@@ -123,6 +123,7 @@ def init(args):
 
 def build(args):
     logger.info('collecting files...')
+    config = parse_config(args.config)
 
     files = []
     for path_ in (args.path or [] + args.paths):
@@ -138,7 +139,8 @@ def build(args):
     files = set(filter(path.normpath, files))
 
     # Exclude items
-    if args.exclude:
+    if config.get('excludes') or args.exclude:
+        excludes = config.get('excludes', []) + args.exclude or []
         def unescape(pattern, keywords):
             for keyword in keywords:
                 pattern = pattern.replace('\\%s' % keyword, keyword)
@@ -147,7 +149,7 @@ def build(args):
         def escape(pattern):
             return unescape(re.escape(pattern), ['**', '*', '?'])
         # Escape patterns
-        filters = map(escape, args.exclude)
+        filters = map(escape, excludes)
         # Remove empty exclude patterns
         filters = filter(lambda x: x, filters)
         # Prefix recursive wildcard
@@ -179,7 +181,6 @@ def build(args):
     logger.debug('files: %s' % files)
 
     logger.info('parsing configuration')
-    config = parse_config(args.config)
     def bundle_name(config):
         return '%s-%s.%s' % (
             config.get('name', 'untitled').replace(' ', '-'),
