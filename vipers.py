@@ -14,8 +14,6 @@ import re
 import os
 import sys
 import json
-import zipfile
-import argparse
 import requests
 
 from os import path
@@ -24,11 +22,17 @@ import logging
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 
-
+PY2 = sys.version_info[0] == 2
+PY3 = sys.version_info[0] == 3
 VERSION = '0.0.1'
 
-if sys.version_info[0] < 3:
+if PY2:
     input = raw_input
+
+def u(text):
+    if PY2:
+        return unicode(text).encode('utf8')
+    return text
 
 
 def urljoin(*args):
@@ -101,13 +105,18 @@ class ViperClient(BaseClient):
         })
 
 
+def parse_config(config):
+    with open(config, 'r') as f:
+        return json.load(f)
+
+
 def init(args):
     pass
 
 
 def build(args):
     files = []
-    for path_ in args.paths:
+    for path_ in (args.path or [] + args.paths):
         if not path.isdir(path_):
             raise ViperError('"%s" is not a directory' % path_)
         for dirpath, dirnames, filenames in os.walk(path_):
@@ -139,14 +148,13 @@ def build(args):
 
     # Exclude items
     if args.exclude:
-        def unescape(pattern):
-            keywords = ['**', '*', '?']
+        def unescape(pattern, keywords):
             for keyword in keywords:
                 pattern = pattern.replace('\\%s' % keyword, keyword)
             return pattern
 
         def escape(pattern):
-            return unescape(re.escape(pattern))
+            return unescape(re.escape(pattern), ['**', '*', '?'])
         # Escape patterns
         filters = map(escape, args.exclude)
         # Remove empty exclude patterns
@@ -177,7 +185,44 @@ def build(args):
             for pattern in filters),
             files
         )
-    print(files)
+
+    config = parse_config(args.config)
+    def bundle_name(config):
+        return '%s-%s.%s' % (
+            config.get('name', 'untitled').replace(' ', '-'),
+            config.get('version', '0.1'),
+            args.type
+        )
+
+    if not args.type:
+        raise ViperError('type must be specified')
+
+    bundle_path = path.join(args.output, bundle_name(config))
+    try:
+        os.makedirs(path.dirname(bundle_path))
+    except OSError:
+        # Already exists
+        pass
+
+    import tarfile
+    import zipfile
+
+    if args.type.startswith('tar'):
+        mode = ''
+        if args.type == 'tar':
+            mode = 'w'
+        else:
+            mode = 'w:%s' % args.type.split('.')[-1]
+
+        with tarfile.open(bundle_path, mode) as f:
+            for file_ in files:
+                f.add(file_)
+    elif args.type == 'zip':
+        with zipfile.ZipFile(bundle_path, 'w') as f:
+            for file_ in files:
+                f.write(file_)
+
+    print('Done!')
 
 
 def publish(args):
@@ -196,14 +241,17 @@ def main():
     except ImportError:
         pass
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--verbose', '-v', action='count', default=0,
-                        help='set logging verbosity')
-    parser.add_argument('--config', '-c',
-                        help='set configuration file. '
-                        'Default file is "vipers.json"',
-                        default='vipers.json')
 
+    import argparse
+    common_parser = argparse.ArgumentParser(add_help=False)
+    common_parser.add_argument('--verbose', '-v', action='count', default=0,
+                               help='set logging verbosity')
+    common_parser.add_argument('--config', '-c',
+                               help='set configuration file. '
+                               'Default file is "vipers.json"',
+                               default='vipers.json')
+
+    parser = argparse.ArgumentParser(parents=[common_parser])
     subparsers = parser.add_subparsers(dest='command')
 
     # TODO: We need interactive interface
@@ -212,24 +260,38 @@ def main():
     init_parser.set_defaults(func=init)
 
     # TODO: What about zip alternative formats? (i.e. tar.gz)
-    build_parser = subparsers.add_parser('build',
-                                         help='create zip bundle to publish')
+    build_parser = subparsers.add_parser('build', parents=[common_parser],
+                                         help='create plugin bundle to publish')
     build_parser.add_argument('--ignore-file', '-i', default='.gitignore',
                               help='use ignore file to filter plugin items. '
                               'comma sperated ignore files '
                               '(default: ".gitignore")')
     build_parser.add_argument('--exclude', '-x', action='append',
-                              default=['.git', 'venv', 'node_modules'])
+                              default=[
+                                  'dist',
+                                  '.git',
+                                  'venv',
+                                  'node_modules',
+                              ])
     build_parser.add_argument('--file', '-f', action='append')
     build_parser.add_argument('--path', '-p', action='append')
-    build_parser.add_argument('--output', '-o', default='dist')
+    build_parser.add_argument('--type', '-t',
+                              default='tar.gz',
+                              choices=[
+                                  'tar.gz',
+                                  'tar.bz2',
+                                  'tar.xz',
+                                  'zip'
+                              ],
+                              help='set output file type')
+    build_parser.add_argument('--output', '-o', type=str, default='dist')
     build_parser.add_argument('paths', nargs='*')
     build_parser.set_defaults(func=build)
 
     # TODO: Show contents before publishing
     #       Option for non-build publishing
     publish_parser = subparsers.add_parser('publish',
-                                           help='publish zip file')
+                                           help='publish plugin')
     publish_parser.add_argument('--username', '-u')
     publish_parser.add_argument('--password', '-p')
     publish_parser.set_defaults(func=publish)
