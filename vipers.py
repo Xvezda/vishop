@@ -107,15 +107,76 @@ def init(args):
 
 def build(args):
     files = []
-    if args.file:
-        files.extend(args.file)
     for path_ in args.paths:
         if not path.isdir(path_):
             raise ViperError('"%s" is not a directory' % path_)
-        for item in os.listdir(path_):
-            if item.startswith('.'):
-                continue
-            files.append(item)
+        for dirpath, dirnames, filenames in os.walk(path_):
+            for item in filenames:
+                if item.startswith('.'):
+                    continue
+                files.append(path.join(dirpath, item))
+    # if args.file:
+    #     files.extend(args.file)
+    # if args.file:
+    #     for a in args.file:
+    #         for b in files:
+    #             if path.samefile(a, b):
+    #                 break
+    #         else:
+    #             files.append(a)
+
+    # Remove redundant duplicated files
+    files = set(filter(path.normpath, files))
+    # rmidx = []
+    # for i, a in enumerate(files):
+    #     for j, b in enumerate(files):
+    #         if j in rmidx or i == j or path.basename(a) == path.basename(b):
+    #             continue
+    #         if path.samefile(a, b):
+    #             rmidx.append(j)
+    # for idx in rmidx:
+    #     files.remove(idx)
+
+    # Exclude items
+    if args.exclude:
+        def unescape(pattern):
+            keywords = ['**', '*', '?']
+            for keyword in keywords:
+                pattern = pattern.replace('\\%s' % keyword, keyword)
+            return pattern
+
+        def escape(pattern):
+            return unescape(re.escape(pattern))
+        # Escape patterns
+        filters = map(escape, args.exclude)
+        # Remove empty exclude patterns
+        filters = filter(lambda x: x, filters)
+        # Prefix recursive wildcard
+        def prefix(exclude):
+            if exclude.startswith('**'):
+                return exclude
+            return '**%s' % path.sep + exclude
+        filters = map(prefix, filters)
+
+        # Support wildcards
+        def wildcard(pattern):
+            # NOTE: Do not use replace character in replacement string
+            #       It will cause nasty bug
+            #       (e.g. use `{0,}` instead of `*`)
+            return (pattern
+                .replace('**', r'[\s\S]{0,}')
+                .replace('*', '[^%s]{0,}' % re.escape(path.sep))
+                .replace('?', '[^%s]?' % re.escape(path.sep)))
+        filters = map(wildcard, filters)
+
+        # Filter it
+        files = filter(
+            lambda x: not any(
+                re.match('^({0}$|{0}{1})'.format(
+                    pattern, re.escape(path.sep)), x)
+            for pattern in filters),
+            files
+        )
     print(files)
 
 
@@ -157,7 +218,8 @@ def main():
                               help='use ignore file to filter plugin items. '
                               'comma sperated ignore files '
                               '(default: ".gitignore")')
-    build_parser.add_argument('--exclude', '-x', action='append')
+    build_parser.add_argument('--exclude', '-x', action='append',
+                              default=['.git', 'venv', 'node_modules'])
     build_parser.add_argument('--file', '-f', action='append')
     build_parser.add_argument('--path', '-p', action='append')
     build_parser.add_argument('--output', '-o', default='dist')
