@@ -262,7 +262,7 @@ def main():
     # TODO: What about zip alternative formats? (i.e. tar.gz)
     build_parser = subparsers.add_parser('build', parents=[common_parser],
                                          help='create plugin bundle to publish')
-    build_parser.add_argument('--ignore-file', '-i', default='.gitignore',
+    build_parser.add_argument('--ignore-file', '-n', default='.gitignore',
                               help='use ignore file to filter plugin items. '
                               'comma sperated ignore files '
                               '(default: ".gitignore")')
