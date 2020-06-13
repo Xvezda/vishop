@@ -39,6 +39,13 @@ def urljoin(*args):
     return '/'.join(args)
 
 
+def confirm(message):
+    answer = input(message)
+    if answer.lower().startswith('y'):
+        return True
+    return False
+
+
 class ViperError(Exception):
     pass
 
@@ -196,8 +203,7 @@ def build(args):
 
         print()
         print()
-        answer = input('would you like to continue? [(y)es/(n)o]: ')
-        if answer.lower().startswith('y'):
+        if confirm('would you like to continue? [(y)es/(n)o]: '):
             pass
         else:
             return 1
@@ -236,7 +242,13 @@ def publish(args):
 
 
 def clean(args):
-    pass
+    import shutil
+    if (args.interactive
+            and not confirm('"%s" will be deleted. are you sure? [(y)es/(n)o]: '
+                            % args.path)):
+        return 1
+    shutil.rmtree(args.path, ignore_errors=True)
+    print('Done!')
 
 
 def main():
@@ -308,6 +320,8 @@ def main():
     publish_parser.set_defaults(func=publish)
 
     clean_parser = subparsers.add_parser('clean')
+    clean_parser.add_argument('--interactive', '-i', action='store_true')
+    clean_parser.add_argument('--path', '-p', type=str, default='dist')
     clean_parser.set_defaults(func=clean)
 
     args = parser.parse_args()
