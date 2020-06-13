@@ -101,6 +101,33 @@ class ViperClient(BaseClient):
         })
 
 
+def init(args):
+    pass
+
+
+def build(args):
+    files = []
+    if args.file:
+        files.extend(args.file)
+    for path_ in args.paths:
+        if not path.isdir(path_):
+            raise ViperError('"%s" is not a directory' % path_)
+        for item in os.listdir(path_):
+            if item.startswith('.'):
+                continue
+            files.append(item)
+    print(files)
+
+
+def publish(args):
+    client = ViperClient(username=args.username, password=args.password)
+    client.login()
+
+
+def clean(args):
+    pass
+
+
 def main():
     try:
         import dotenv
@@ -121,12 +148,21 @@ def main():
     # TODO: We need interactive interface
     init_parser = subparsers.add_parser('init',
                                         help='create configuration file')
+    init_parser.set_defaults(func=init)
 
     # TODO: What about zip alternative formats? (i.e. tar.gz)
     build_parser = subparsers.add_parser('build',
                                          help='create zip bundle to publish')
+    build_parser.add_argument('--ignore-file', '-i', default='.gitignore',
+                              help='use ignore file to filter plugin items. '
+                              'comma sperated ignore files '
+                              '(default: ".gitignore")')
+    build_parser.add_argument('--exclude', '-x', action='append')
+    build_parser.add_argument('--file', '-f', action='append')
+    build_parser.add_argument('--path', '-p', action='append')
     build_parser.add_argument('--output', '-o', default='dist')
-    build_parser.add_argument('paths', nargs='+')
+    build_parser.add_argument('paths', nargs='*')
+    build_parser.set_defaults(func=build)
 
     # TODO: Show contents before publishing
     #       Option for non-build publishing
@@ -134,21 +170,25 @@ def main():
                                            help='publish zip file')
     publish_parser.add_argument('--username', '-u')
     publish_parser.add_argument('--password', '-p')
+    publish_parser.set_defaults(func=publish)
+
     clean_parser = subparsers.add_parser('clean')
+    clean_parser.set_defaults(func=clean)
 
     args = parser.parse_args()
 
-    for path_ in args.paths:
-        if not path.isdir(path_):
-            parser.error('"%s" is not a directory' % path_)
-
+    # Set logger verbose level
     if args.verbose == 1:
         logger.setLevel(logging.INFO)
     elif args.verbose == 2:
         logger.setLevel(logging.DEBUG)
 
-    client = ViperClient(username=args.username, password=args.password)
-    client.login()
+    # Exceptions
+    if args.command == 'build':
+        if not args.file and not args.path and not args.paths:
+            build_parser.error('at least one file or path required')
+
+    args.func(args)
 
 
 if __name__ == '__main__':
