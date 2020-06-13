@@ -115,6 +115,8 @@ def init(args):
 
 
 def build(args):
+    logger.info('collecting files...')
+
     files = []
     for path_ in (args.path or [] + args.paths):
         if not path.isdir(path_):
@@ -124,27 +126,9 @@ def build(args):
                 if item.startswith('.'):
                     continue
                 files.append(path.join(dirpath, item))
-    # if args.file:
-    #     files.extend(args.file)
-    # if args.file:
-    #     for a in args.file:
-    #         for b in files:
-    #             if path.samefile(a, b):
-    #                 break
-    #         else:
-    #             files.append(a)
 
     # Remove redundant duplicated files
     files = set(filter(path.normpath, files))
-    # rmidx = []
-    # for i, a in enumerate(files):
-    #     for j, b in enumerate(files):
-    #         if j in rmidx or i == j or path.basename(a) == path.basename(b):
-    #             continue
-    #         if path.samefile(a, b):
-    #             rmidx.append(j)
-    # for idx in rmidx:
-    #     files.remove(idx)
 
     # Exclude items
     if args.exclude:
@@ -185,7 +169,9 @@ def build(args):
             for pattern in filters),
             files
         )
+    logger.debug('files: %s' % files)
 
+    logger.info('parsing configuration')
     config = parse_config(args.config)
     def bundle_name(config):
         return '%s-%s.%s' % (
@@ -196,6 +182,26 @@ def build(args):
 
     if not args.type:
         raise ViperError('type must be specified')
+
+    if args.interactive:
+        print('following files will be archived')
+        print()
+
+        files.sort()
+        LIMIT = 3
+        print('\n'.join(files[:LIMIT]))
+
+        if len(files) > LIMIT:
+            print()
+            print('...and', len(files) - LIMIT, 'more files!')
+
+        print()
+        print()
+        answer = input('would you like to continue? [(y)es/(n)o]: ')
+        if answer.lower().startswith('y'):
+            pass
+        else:
+            return 1
 
     bundle_path = path.join(args.output, bundle_name(config))
     try:
@@ -262,6 +268,7 @@ def main():
     # TODO: What about zip alternative formats? (i.e. tar.gz)
     build_parser = subparsers.add_parser('build', parents=[common_parser],
                                          help='create plugin bundle to publish')
+    build_parser.add_argument('--interactive', '-i', action='store_true')
     build_parser.add_argument('--ignore-file', '-n', default='.gitignore',
                               help='use ignore file to filter plugin items. '
                               'comma sperated ignore files '
