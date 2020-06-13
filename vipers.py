@@ -188,12 +188,11 @@ def build(args):
         print()
 
         files.sort()
-        LIMIT = 3
-        print('\n'.join(files[:LIMIT]))
+        print('\n'.join(files[:args.limit]))
 
-        if len(files) > LIMIT:
+        if len(files) > args.limit:
             print()
-            print('...and', len(files) - LIMIT, 'more files!')
+            print('...and', len(files) - args.limit, 'more files!')
 
         print()
         print()
@@ -269,6 +268,11 @@ def main():
     build_parser = subparsers.add_parser('build', parents=[common_parser],
                                          help='create plugin bundle to publish')
     build_parser.add_argument('--interactive', '-i', action='store_true')
+    build_parser.add_argument('--limit', '-l',
+                              type=int,
+                              default=10,
+                              help='limit of interactive information limits. '
+                                   'ignored when interactive option disabled.')
     build_parser.add_argument('--ignore-file', '-n', default='.gitignore',
                               help='use ignore file to filter plugin items. '
                               'comma sperated ignore files '

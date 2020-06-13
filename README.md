@@ -1,6 +1,8 @@
 # Vipers
 
-VIM script publisher client
+> Publish your vim plugin right away!
+
+`Vipers` is VIM script publisher client.
 
 ## FAQ
 
