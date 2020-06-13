@@ -24,7 +24,10 @@ logger.addHandler(logging.StreamHandler())
 
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
+
 VERSION = '0.0.1'
+AUTHOR = 'Xvezda'
+AUTHOR_EMAIL = 'xvezda@naver.com'
 
 if PY2:
     input = raw_input
