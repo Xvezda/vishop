@@ -26,6 +26,7 @@ setup(
     author=AUTHOR,
     author_email=AUTHOR_EMAIL,
     classifiers=[
+        'Environment :: Console',
         'Topic :: Text Editors',
         'Topic :: System :: Archiving :: Packaging',
         'Development Status :: 4 - Beta',
