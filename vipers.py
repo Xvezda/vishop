@@ -120,40 +120,79 @@ def parse_config(config):
 
 def init(args):
     config = {}
-    require_fields = [
-        'name',
-        'type',
-        'required',
-        'init_version',
-        'summary',
-        'description'
+    fields = [
+        {'name': 'name'},
+        {
+            'name': 'type',
+            'type': str,
+            'choices': [
+                'color scheme',
+                 'ftplugin',
+                 'game',
+                 'indent',
+                 'syntax',
+                 'utility',
+                 'patch'
+            ]
+        },
+        {'name': 'required'},
+        {'name': 'init_version'},
+        {'name': 'summary'},
+        {'name': 'description'},
+        {'name': 'install_details', 'optional': True},
+        {'name': 'private', 'type': bool, 'optional': True, 'default': False}
     ]
 
-    fields = require_fields + [
-        'install_details',
-        'private'
-    ]
+    # Exit if required parameters empty and not interactive
+    if (any(not field.get('optional', None)
+            and not getattr(args, field.get('name'), None) for field in fields)
+            and not sys.stdin.isatty()):
+        print('init failed! there are empty fields', file=sys.stderr)
+        return 1
 
-    if any(not getattr(args, field, None) for field in require_fields):
-        if not sys.stdin.isatty():
-            print('init failed! there are empty fields', file=sys.stderr)
-            return 1
-        for field in fields:
-            value = getattr(args, field, None)
-            if not value:
-                is_optional = field not in require_fields
-                while not value:
-                    try:
-                        value = input('%s: ' % (field.replace('_', ' ')
-                                      + (' (optional)' if is_optional else '')))
-                    except KeyboardInterrupt:
-                        print('cancel', file=sys.stderr)
-                        return 1
-                    if is_optional:
-                        break
+    def create_label(field, indent=4, indent_char=' '):
+        name = field.get('name')
+        output = name.replace('-', ' ').replace('_', ' ')
+        optional = field.get('optional', None)
+        choices = field.get('choices', None)
+        if optional or choices:
+            if optional:
+                output += ' (optional)'
+            if choices:
+                for choice in choices:
+                    output += '\n'
+                    output += indent_char * indent
+                    output += choice
+                output += '\n'
+                output += 'select %s' % name
+        return output
+
+    for field in fields:
+        name = field.get('name')
+        value = getattr(args, name, None)
+        if not value:
+            is_optional = field.get('optional', None)
+            choices = field.get('choices', None)
+            while (not value
+                   or (choices and value not in choices)):
+                label = create_label(field)
+                try:
+                    value = input('%s: ' % label)
+                except KeyboardInterrupt:
+                    print('cancel', file=sys.stderr)
+                    return 1
+                field_type = field.get('type', None)
+                if field_type:
+                    # Bool exception
+                    if field_type is bool and value.lower() == 'false':
+                        value = False
+                    else:
+                        value = field_type(value)
+                if is_optional:
+                    break
             if is_optional and not value:
                 continue
-            config[field] = value
+        config[name] = value
     print()
 
     reversed_config = {}
@@ -348,7 +387,7 @@ def main():
     init_parser.add_argument('--summary', '-s', type=str)
     init_parser.add_argument('--description', '-d', type=str)
     init_parser.add_argument('--install-details', '-D', type=str)
-    init_parser.add_argument('--private', '-p', type=bool)
+    init_parser.add_argument('--private', '-p', type=bool, default=False)
     init_parser.set_defaults(func=init)
 
     build_parser = subparsers.add_parser('build', parents=[common_parser],
