@@ -278,9 +278,34 @@ def main():
     # TODO: We need interactive interface
     init_parser = subparsers.add_parser('init',
                                         help='create configuration file')
+    init_parser.add_argument('--interactive', '-i', action='store_true')
+    init_parser.add_argument('--name', '-n')
+    init_parser.add_argument('--type', '-t',
+                             choices=[
+                                 'color scheme',
+                                 'ftplugin',
+                                 'game',
+                                 'indent',
+                                 'syntax',
+                                 'utility',
+                                 'patch'])
+    init_parser.add_argument('--required', '-r',
+                             type=str,
+                             default='7.0',
+                             choices=[
+                                 "5.7",
+                                 "6.0",
+                                 "7.0",
+                                 "7.2",
+                                 "7.3",
+                                 "7.4",
+                                 "8.0"])
+    init_parser.add_argument('--init-version', '-V', type=str, default='1.0')
+    init_parser.add_argument('--summary', '-s', type=str)
+    init_parser.add_argument('--description', '-d', type=str)
+    init_parser.add_argument('--install-details', '-D', type=str)
     init_parser.set_defaults(func=init)
 
-    # TODO: What about zip alternative formats? (i.e. tar.gz)
     build_parser = subparsers.add_parser('build', parents=[common_parser],
                                          help='create plugin bundle to publish')
     build_parser.add_argument('--interactive', '-i', action='store_true')
@@ -315,8 +340,7 @@ def main():
     build_parser.add_argument('paths', nargs='*')
     build_parser.set_defaults(func=build)
 
-    # TODO: Show contents before publishing
-    #       Option for non-build publishing
+    # TODO: Option for non-build publishing
     publish_parser = subparsers.add_parser('publish',
                                            help='publish plugin')
     publish_parser.add_argument('--username', '-u')
