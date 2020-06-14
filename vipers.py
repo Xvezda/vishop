@@ -22,12 +22,10 @@ import logging
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 
+from version import VERSION, AUTHOR, AUTHOR_EMAIL
+
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
-
-VERSION = '0.0.1'
-AUTHOR = 'Xvezda'
-AUTHOR_EMAIL = 'xvezda@naver.com'
 
 if PY2:
     input = raw_input

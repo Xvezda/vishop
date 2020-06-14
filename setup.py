@@ -9,7 +9,7 @@
 from os import path
 
 from setuptools import setup
-from vipers import VERSION, AUTHOR, AUTHOR_EMAIL
+from version import VERSION, AUTHOR, AUTHOR_EMAIL
 
 here = path.abspath(path.dirname(__file__))
 
@@ -44,6 +44,6 @@ setup(
         vipers=vipers:main
     ''',
     keywords='VIM VI plugin package manager utility publish',
-    py_modules=['vipers'],
+    py_modules=['vipers', 'version'],
     install_requires=['requests'],
 )
