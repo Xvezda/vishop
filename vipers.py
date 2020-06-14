@@ -121,7 +121,39 @@ def parse_config(config):
 
 
 def init(args):
-    pass
+    config = {}
+    require_fields = [
+        'name',
+        'type',
+        'required',
+        'init_version',
+        'summary',
+        'description'
+    ]
+
+    fields = require_fields + [
+        'install_details'
+    ]
+
+    if any(not getattr(args, field, None) for field in require_fields):
+        if not sys.stdin.isatty():
+            print('init failed! there are empty fields', file=sys.stderr)
+            return 1
+        for field in fields:
+            value = getattr(args, field, None)
+            if not value:
+                is_optional = field not in require_fields
+                while not value:
+                    try:
+                        value = input('%s: ' % (field.replace('_', ' ')
+                                      + (' (optional)' if is_optional else '')))
+                    except KeyboardInterrupt:
+                        print('cancel', file=sys.stderr)
+                        return 1
+                    if is_optional:
+                        break
+            config[field] = value
+    print(config)
 
 
 def build(args):
@@ -278,7 +310,6 @@ def main():
     # TODO: We need interactive interface
     init_parser = subparsers.add_parser('init',
                                         help='create configuration file')
-    init_parser.add_argument('--interactive', '-i', action='store_true')
     init_parser.add_argument('--name', '-n')
     init_parser.add_argument('--type', '-t',
                              choices=[
