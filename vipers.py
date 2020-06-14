@@ -484,6 +484,7 @@ def main():
                                   'dist',
                                   '.git',
                                   'venv',
+                                  '__pycache__',
                                   'node_modules',
                               ])
     build_parser.add_argument('--file', '-f', action='append')
