@@ -1,5 +1,9 @@
 # Vipers
 
+[![Version](https://img.shields.io/pypi/v/vipers)](https://pypi.org/project/vipers)
+![License](https://img.shields.io/pypi/l/vipers)
+![Support](https://img.shields.io/pypi/pyversions/vipers)
+
 > Publish your vim plugin right away!
 
 `Vipers` is VIM script publisher client.
