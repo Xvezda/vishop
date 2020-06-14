@@ -110,8 +110,10 @@ class ViperClient(BaseClient):
     def login(self):
         print('attempt to login...')
         logger.debug('User-Agent: %s' % self.USER_AGENT)
+
+        url = urljoin(self.BASE_URL, 'login.php')
         self.update_headers({
-            'Referer': urljoin(self.BASE_URL, 'login.php')
+            'Referer': url
         })
         data = {
             'authenticate': 'true',
@@ -119,7 +121,6 @@ class ViperClient(BaseClient):
             'userName': self.username,
             'password': self.password
         }
-        url = urljoin(self.BASE_URL, 'login.php')
         r = requests.post(url,
                           data=data, headers=self.headers,
                           allow_redirects=False)
@@ -127,6 +128,17 @@ class ViperClient(BaseClient):
             'Cookie': r.headers.get('Set-Cookie'),
             'Referer': url
         })
+
+        logger.debug('headers: %r' % r.headers.get('Location'))
+        logger.debug('text: %s' % r.text)
+        logger.debug('status_code: %d' % r.status_code)
+
+        # Exception
+        if r.status_code == 200:
+            if re.search('try again later', r.text):
+                raise ViperError('maximum quota exceeded: %s' % r.text)
+            raise ViperError('unexpected exception occurred')
+
         url = r.headers.get('Location')
         r = requests.get(url,
                          headers=self.headers)
