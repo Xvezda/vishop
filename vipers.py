@@ -16,8 +16,6 @@ import sys
 import json
 import requests
 
-from os import path
-
 import logging
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
@@ -47,6 +45,26 @@ def confirm(message):
     return False
 
 
+def wildcard(pattern):
+    # NOTE: Do not use replace character in replacement string
+    #       It will cause nasty bug
+    #       (e.g. use `{0,}` instead of `*`)
+    return (pattern
+        .replace('**', r'[\s\S]{0,}')
+        .replace('*', '[^%s]{0,}' % re.escape(os.path.sep))
+        .replace('?', '[^%s]?' % re.escape(os.path.sep)))
+
+
+def unescape(pattern, keywords):
+    for keyword in keywords:
+        pattern = pattern.replace('\\%s' % keyword, keyword)
+    return pattern
+
+
+def escape(pattern):
+    return unescape(re.escape(pattern), ['**', '*', '?'])
+
+
 class ViperError(Exception):
     pass
 
@@ -67,14 +85,16 @@ class ViperClient(BaseClient):
     BASE_URL = 'https://www.vim.org'
     USER_AGENT = 'viper/%s' % VERSION
 
-    def __init__(self, username=None, password=None):
+    def __init__(self, args=None):
         super(ViperClient, self).__init__()
         self.update_headers({
             'User-Agent': self.USER_AGENT
         })
 
-        self.username = username or os.getenv('VIPERS_USERNAME')
-        self.password = password or os.getenv('VIPERS_PASSWORD')
+        self.args = args
+
+        self.username = args.username or os.getenv('VIPERS_USERNAME')
+        self.password = args.password or os.getenv('VIPERS_PASSWORD')
 
         if (not sys.stdin.isatty()
                 and (not self.username or not self.password)):
@@ -136,9 +156,9 @@ def init(args):
             ]
         },
         {'name': 'required'},
-        {'name': 'init_version'},
+        {'name': 'init_version', 'alias': 'version'},
         {'name': 'summary'},
-        {'name': 'description'},
+        {'name': 'description', 'optional': True},
         {'name': 'install_details', 'optional': True},
         {'name': 'private', 'type': bool, 'optional': True, 'default': False}
     ]
@@ -192,7 +212,8 @@ def init(args):
                     break
             if is_optional and not value:
                 continue
-        config[name] = value
+        alias = field.get('alias', name)
+        config[alias] = value
     print()
 
     reversed_config = {}
@@ -210,28 +231,21 @@ def build(args):
     config = parse_config(args.config)
 
     files = []
-    for path_ in (args.path or [] + args.paths):
-        if not path.isdir(path_):
-            raise ViperError('"%s" is not a directory' % path_)
-        for dirpath, dirnames, filenames in os.walk(path_):
+    for path in (args.path or [] + args.paths):
+        if not os.path.isdir(path):
+            raise ViperError('"%s" is not a directory' % path)
+        for dirpath, dirnames, filenames in os.walk(path):
             for item in filenames:
                 if item.startswith('.'):
                     continue
-                files.append(path.join(dirpath, item))
+                files.append(os.path.join(dirpath, item))
 
     # Remove redundant duplicated files
-    files = set(filter(path.normpath, files))
+    files = set(filter(os.path.normpath, files))
 
     # Exclude items
     if config.get('excludes') or args.exclude:
         excludes = config.get('excludes', []) + args.exclude or []
-        def unescape(pattern, keywords):
-            for keyword in keywords:
-                pattern = pattern.replace('\\%s' % keyword, keyword)
-            return pattern
-
-        def escape(pattern):
-            return unescape(re.escape(pattern), ['**', '*', '?'])
         # Escape patterns
         filters = map(escape, excludes)
         # Remove empty exclude patterns
@@ -240,28 +254,29 @@ def build(args):
         def prefix(exclude):
             if exclude.startswith('**'):
                 return exclude
-            return '**%s' % path.sep + exclude
-        filters = map(prefix, filters)
-
+            return '**%s' % os.path.sep + exclude
         # Support wildcards
-        def wildcard(pattern):
-            # NOTE: Do not use replace character in replacement string
-            #       It will cause nasty bug
-            #       (e.g. use `{0,}` instead of `*`)
-            return (pattern
-                .replace('**', r'[\s\S]{0,}')
-                .replace('*', '[^%s]{0,}' % re.escape(path.sep))
-                .replace('?', '[^%s]?' % re.escape(path.sep)))
-        filters = map(wildcard, filters)
+        filters = map(wildcard, map(prefix, filters))
+
+        # Convert non list variables to list
+        filters = list(filters)
+        files = list(files)
 
         # Filter it
-        files = filter(
-            lambda x: not any(
-                re.match('^({0}$|{0}{1})'.format(
-                    pattern, re.escape(path.sep)), x)
-            for pattern in filters),
-            files
-        )
+        filtered = []
+        for file_ in files:
+            for pattern in filters:
+                formatted = '^({0}{1}|{0}$)'.format(pattern, os.path.sep)
+                logger.debug(
+                    '%r %r %r' % (formatted,
+                                  file_,
+                                  bool(re.match(formatted, file_))))
+                if re.match(formatted, file_):
+                    break
+            else:
+                filtered.append(file_)
+        files = filtered
+    files = list(files)
     logger.debug('files: %s' % files)
 
     logger.info('parsing configuration')
@@ -275,11 +290,14 @@ def build(args):
     if not args.type:
         raise ViperError('type must be specified')
 
+    if not files:
+        raise ViperError('at least 1 file required')
+
     if args.interactive:
         print('following files will be archived')
         print()
 
-        files.sort()
+        # files = sorted(files)
         print('\n'.join(files[:args.limit]))
 
         if len(files) > args.limit:
@@ -293,9 +311,9 @@ def build(args):
         else:
             return 1
 
-    bundle_path = path.join(args.output, bundle_name(config))
+    bundle_path = os.path.join(args.output, bundle_name(config))
     try:
-        os.makedirs(path.dirname(bundle_path))
+        os.makedirs(os.path.dirname(bundle_path))
     except OSError:
         # Already exists
         pass
@@ -304,13 +322,13 @@ def build(args):
     import zipfile
 
     if args.type.startswith('tar'):
-        mode = ''
-        if args.type == 'tar':
-            mode = 'w'
-        else:
-            mode = 'w:%s' % args.type.split('.')[-1]
-
-        with tarfile.open(bundle_path, mode) as f:
+        # mode = ''
+        # if args.type == 'tar':
+        #     mode = 'w'
+        # else:
+        #     mode = 'w:%s' % args.type.split('.')[-1]
+        with tarfile.TarFile(bundle_path, 'w',
+                             format=tarfile.GNU_FORMAT) as f:
             for file_ in files:
                 f.add(file_)
     elif args.type == 'zip':
@@ -357,7 +375,7 @@ def main():
     subparsers = parser.add_subparsers(dest='command')
 
     # TODO: We need interactive interface
-    init_parser = subparsers.add_parser('init',
+    init_parser = subparsers.add_parser('init', parents=[common_parser],
                                         help='create configuration file')
     init_parser.add_argument('--output', '-o',
                              type=str,
@@ -411,6 +429,7 @@ def main():
                               ])
     build_parser.add_argument('--file', '-f', action='append')
     build_parser.add_argument('--path', '-p', action='append')
+    # TODO: Add format selection for tar files (e.g. POSIX, GNU...).
     build_parser.add_argument('--type', '-t',
                               default='tar.gz',
                               choices=[
@@ -425,10 +444,14 @@ def main():
     build_parser.set_defaults(func=build)
 
     # TODO: Option for non-build publishing
-    publish_parser = subparsers.add_parser('publish',
+    #       Use README* file for description
+    publish_parser = subparsers.add_parser('publish', parents=[common_parser],
                                            help='publish plugin')
     publish_parser.add_argument('--username', '-u')
     publish_parser.add_argument('--password', '-p')
+    publish_parser.add_argument('--description', '-d')
+    publish_parser.add_argument('--interactive', '-i', action='store_true')
+    publish_parser.add_argument('file', type=str)
     publish_parser.set_defaults(func=publish)
 
     clean_parser = subparsers.add_parser('clean')
