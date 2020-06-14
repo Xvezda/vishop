@@ -108,8 +108,8 @@ class ViperClient(BaseClient):
             self.password = getpass.getpass('password: ')
 
     def login(self):
+        print('attempt to login...')
         logger.debug('User-Agent: %s' % self.USER_AGENT)
-        return
         self.update_headers({
             'Referer': urljoin(self.BASE_URL, 'login.php')
         })
@@ -119,18 +119,76 @@ class ViperClient(BaseClient):
             'userName': self.username,
             'password': self.password
         }
-        r = requests.post(urljoin(self.BASE_URL, 'login.php'),
+        url = urljoin(self.BASE_URL, 'login.php')
+        r = requests.post(url,
                           data=data, headers=self.headers,
                           allow_redirects=False)
+        self.update_headers({
+            'Cookie': r.headers.get('Set-Cookie'),
+            'Referer': url
+        })
+        url = r.headers.get('Location')
+        r = requests.get(url,
+                         headers=self.headers)
         logger.info('%s, %s' % (r.text, r.headers))
+        self.update_headers({
+            'Referer': url
+        })
 
         # Login failed
         if re.search('Authentication failed', r.text):
-            raise ViperError('Authentication failed')
+            raise ViperError('authentication failed')
+        print('login success!')
 
-        self.update_headers({
-            'Cookie': r.headers.get('Set-Cookie')
-        })
+    def publish(self):
+        config = parse_config(self.args.config)
+        description = self.args.description or config.get('description')
+        if not description:
+            # TODO: Find README* files
+            wildcard_filter = lambda x: re.match(wildcard(escape('README*')), x)
+            files = list(filter(wildcard_filter, os.listdir('.')))
+            if not files:
+                raise ViperError('description required')
+            with open(files[0], 'rt') as f:
+                description = f.read()
+        # Form data
+        data = {
+            'ACTION': 'UPLOAD_NEW',
+            'MAX_FILE_SIZE': '10485760',
+            'script_name': config.get('name'),
+            # 'script_file': None,  # binary
+            'script_type': config.get('type'),
+            'vim_version': config.get('required'),
+            'script_version': config.get('version'),
+            'summary': config.get('summary'),
+            'description': description,
+            'install_details': config.get('install_details', ''),
+            'add_script': 'upload'
+        }
+        files = {'script_file': open(self.args.file, 'rb')}
+        url = urljoin(self.BASE_URL, 'scripts', 'add_script.php')
+
+        if (self.args.interactive
+                and not confirm('"%s" [(y)es/(n)o]: ' % self.args.file)):
+            return
+
+        logger.debug('data: %s' % data)
+        print('uploading...')
+
+        r = requests.post(url, data=data, files=files, headers=self.headers,
+                          allow_redirects=False)
+
+        logger.debug('text: %s' % r.text)
+        logger.debug('headers: %r' % r.headers)
+        logger.debug('status_code: %r' % r.status_code)
+
+        if r.status_code != 302:
+            print('something goes wrong', file=sys.stderr)
+            return 1
+        print('Done!')
+
+        result_url = r.headers.get('Location')
+        print('URL:', result_url)
 
 
 def parse_config(config):
@@ -340,8 +398,9 @@ def build(args):
 
 
 def publish(args):
-    client = ViperClient(username=args.username, password=args.password)
+    client = ViperClient(args)
     client.login()
+    client.publish()
 
 
 def clean(args):
