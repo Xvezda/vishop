@@ -391,9 +391,17 @@ def main():
     elif args.verbose == 2:
         logger.setLevel(logging.DEBUG)
 
+    if not args.command:
+        parser.error('too few arguments')
+
     # Exceptions
     if args.command == 'build':
-        if not args.file and not args.path and not args.paths:
+        try:
+            if args.file or args.path or args.paths:
+                pass
+            else:
+                raise AttributeError
+        except AttributeError:
             build_parser.error('at least one file or path required')
 
     args.func(args)
