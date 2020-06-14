@@ -1,9 +1,8 @@
 {
   "name": "script name",
-  "type": "color scheme|ftplugin|game|indent|syntax|utility|patch",
+  "type": "utility",
   "summary": "summary here",
-  "description": "detailed description",
-  "install_detail": "install details (optional)",
+  "install_detail": "install details",
   "version": "1.0",
   "required": "7.0"
 }
