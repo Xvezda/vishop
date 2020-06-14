@@ -22,6 +22,7 @@ setup(
     description='Vipers is command line VIM script publisher client.',
     long_description=long_description,
     long_description_content_type='text/markdown',
+    license='MIT',
     url='https://github.com/Xvezda/vipers',
     author=AUTHOR,
     author_email=AUTHOR_EMAIL,
@@ -29,7 +30,7 @@ setup(
         'Environment :: Console',
         'Topic :: Text Editors',
         'Topic :: System :: Archiving :: Packaging',
-        'Development Status :: 4 - Beta',
+        'Development Status :: 2 - Pre-Alpha',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
@@ -43,7 +44,7 @@ setup(
         [console_scripts]
         vipers=vipers:main
     ''',
-    keywords='VIM VI plugin package manager utility publish',
+    keywords='VIM, VI, editor, plugin, package manager, utility, publishing',
     py_modules=['vipers', 'version'],
     install_requires=['requests'],
 )
