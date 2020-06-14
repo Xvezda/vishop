@@ -130,7 +130,8 @@ def init(args):
     ]
 
     fields = require_fields + [
-        'install_details'
+        'install_details',
+        'private'
     ]
 
     if any(not getattr(args, field, None) for field in require_fields):
@@ -150,8 +151,19 @@ def init(args):
                         return 1
                     if is_optional:
                         break
+            if is_optional and not value:
+                continue
             config[field] = value
-    print(config)
+    print()
+
+    reversed_config = {}
+    for k, v in config.items():
+        reversed_config[k] = v
+
+    with open(args.output, 'w') as f:
+        json.dump(reversed_config, f,
+                  indent=4, separators=(',', ': '))
+    print('Done!')
 
 
 def build(args):
@@ -308,6 +320,9 @@ def main():
     # TODO: We need interactive interface
     init_parser = subparsers.add_parser('init',
                                         help='create configuration file')
+    init_parser.add_argument('--output', '-o',
+                             type=str,
+                             default='vipers.json')
     init_parser.add_argument('--name', '-n')
     init_parser.add_argument('--type', '-t',
                              choices=[
@@ -333,6 +348,7 @@ def main():
     init_parser.add_argument('--summary', '-s', type=str)
     init_parser.add_argument('--description', '-d', type=str)
     init_parser.add_argument('--install-details', '-D', type=str)
+    init_parser.add_argument('--private', '-p', type=bool)
     init_parser.set_defaults(func=init)
 
     build_parser = subparsers.add_parser('build', parents=[common_parser],
