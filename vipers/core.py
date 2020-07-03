@@ -14,6 +14,8 @@ import re
 import os
 import sys
 import json
+import tarfile
+import zipfile
 
 import requests  # noqa
 from bs4 import BeautifulSoup  # noqa
@@ -111,6 +113,17 @@ class ViperClient(BaseClient):
         if not self.password:
             import getpass
             self.password = getpass.getpass('password: ')
+    
+    def config_from_bundle(self, path):
+        if re.search(r'\.tar\.[a-z]+$', path):  # tar file
+            with tarfile.TarFile(path, 'r') as f:
+                filtered = filter(lambda x: x.endswith(self.args.config), f.getnames())
+                config_name = sorted(list(filtered), key=len)[0]
+                return json.loads(f.extractfile(config_name).read())
+        elif re.search(r'\.zip$', path):  # zip file
+            with zipfile.ZipFile(path, 'r') as f:
+                return json.loads(f.read(self.args.config))
+        raise ViperError("file '%s' is not supported type" % path)
 
     def login(self):
         print('attempt to login...')
@@ -248,7 +261,7 @@ class ViperClient(BaseClient):
         version = heading.find_next_sibling('p').string.strip().split(' ')[-1]
         return version
 
-    def update(self):
+    def update(self, file):
         if not sys.stdin.isatty():
             raise ViperError('update must be interactive mode')
 
@@ -259,106 +272,104 @@ class ViperClient(BaseClient):
                 if script.get('name') == name:
                     return script.get('id')
 
-        for file in self.args.files:
-            # TODO: Read configuration from bundle
-            config = parse_config(self.args.config)
+        # TODO: Read configuration from bundle
+        config = self.config_from_bundle(file)
 
-            script_id = find_id(config.get('name'))
-            logger.debug('id: %s' % script_id)
+        script_id = find_id(config.get('name'))
+        logger.debug('id: %s' % script_id)
 
-            comment = ''
-            while not comment:
-                try:
-                    comment = input('version comment: ')
-                except KeyboardInterrupt:
-                    print('cancel', file=sys.stderr)
-                    sys.exit(1)
+        comment = ''
+        while not comment:
+            try:
+                comment = input('version comment: ')
+            except KeyboardInterrupt:
+                print('cancel', file=sys.stderr)
+                sys.exit(1)
 
-            data = {
-                'MAX_FILE_SIZE': self.MAX_FILE_SIZE,
-                'vim_version': config.get('required'),
-                'script_version': config.get('version'),
-                'version_comment': comment,
-                'script_id': script_id,
-                'add_script': 'upload'
-            }
-            files = {'script_file': open(file, 'rb')}
-            # https://www.vim.org/scripts/add_script_version.php?script_id=[id]
-            url = urljoin(self.BASE_URL, 'scripts', 'add_script_version.php?script_id=%s' % script_id)
-            logger.debug('url: %s' % url)
-            logger.debug('data: %r' % data)
+        data = {
+            'MAX_FILE_SIZE': self.MAX_FILE_SIZE,
+            'vim_version': config.get('required'),
+            'script_version': config.get('version'),
+            'version_comment': comment,
+            'script_id': script_id,
+            'add_script': 'upload'
+        }
+        files = {'script_file': open(file, 'rb')}
+        # https://www.vim.org/scripts/add_script_version.php?script_id=[id]
+        url = urljoin(self.BASE_URL, 'scripts', 'add_script_version.php?script_id=%s' % script_id)
+        logger.debug('url: %s' % url)
+        logger.debug('data: %r' % data)
 
-            versions = self.versions(script_id)
-            logger.debug('versions: %r' % versions)
+        versions = self.versions(script_id)
+        logger.debug('versions: %r' % versions)
 
-            version = config.get('version')
-            if version in versions:
-                # raise ViperError("cannot update script: version '%s' already exists!" % version)
-                continue
+        version = config.get('version')
+        if version in versions:
+            raise ViperError("cannot update script: version '%s' already exists!" % version)
+            # return
 
-    def upload(self):
-        for file in self.args.files:
-            # TODO: Read configuration from bundle
-            config = parse_config(self.args.config)
-            description = self.args.description or config.get('description')
-            if not description:
-                # TODO: Find README* files
-                wildcard_filter = lambda x: re.match(wildcard(escape('README*')), x)
-                files = list(filter(wildcard_filter, os.listdir('.')))
-                if not files:
-                    raise ViperError('description required')
-                with open(files[0], 'rt') as f:
-                    description = f.read()
-            # Form data
-            data = {
-                'ACTION': 'UPLOAD_NEW',
-                'MAX_FILE_SIZE': self.MAX_FILE_SIZE,
-                'script_name': config.get('name'),
-                # 'script_file': None,  # binary
-                'script_type': config.get('type'),
-                'vim_version': config.get('required'),
-                'script_version': config.get('version'),
-                'summary': config.get('summary'),
-                'description': description,
-                'install_details': config.get('install_details', ''),
-                'add_script': 'upload'
-            }
-            files = {'script_file': open(file, 'rb')}
-            url = urljoin(self.BASE_URL, 'scripts', 'add_script.php')
+    def upload(self, file):
+        # TODO: Read configuration from bundle
+        config = self.config_from_bundle(file)
+        description = self.args.description or config.get('description')
+        if not description:
+            # TODO: Find README* files
+            wildcard_filter = lambda x: re.match(wildcard(escape('README*')), x)
+            files = list(filter(wildcard_filter, os.listdir('.')))
+            if not files:
+                raise ViperError('description required')
+            with open(files[0], 'rt') as f:
+                description = f.read()
+        # Form data
+        data = {
+            'ACTION': 'UPLOAD_NEW',
+            'MAX_FILE_SIZE': self.MAX_FILE_SIZE,
+            'script_name': config.get('name'),
+            # 'script_file': None,  # binary
+            'script_type': config.get('type'),
+            'vim_version': config.get('required'),
+            'script_version': config.get('version'),
+            'summary': config.get('summary'),
+            'description': description,
+            'install_details': config.get('install_details', ''),
+            'add_script': 'upload'
+        }
+        files = {'script_file': open(file, 'rb')}
+        url = urljoin(self.BASE_URL, 'scripts', 'add_script.php')
 
-            if (self.args.interactive
-                    and not confirm('"%s" [(y)es/(n)o]: ' % file)):
-                return
+        if (self.args.interactive
+                and not confirm('"%s" [(y)es/(n)o]: ' % file)):
+            return
 
-            logger.debug('data: %s' % data)
-            print('uploading...')
+        logger.debug('data: %s' % data)
+        print('uploading...')
 
-            r = requests.post(url, data=data, files=files, headers=self.headers,
-                            allow_redirects=False)
+        r = requests.post(url, data=data, files=files, headers=self.headers,
+                        allow_redirects=False)
 
-            logger.debug('text: %s' % r.text)
-            logger.debug('headers: %r' % r.headers)
-            logger.debug('status_code: %r' % r.status_code)
+        logger.debug('text: %s' % r.text)
+        logger.debug('headers: %r' % r.headers)
+        logger.debug('status_code: %r' % r.status_code)
 
-            if r.status_code != 302:
-                print('something goes wrong', file=sys.stderr)
-                return 1
-            print('Done!')
+        if r.status_code != 302:
+            print('something goes wrong', file=sys.stderr)
+            return 1
+        print('Done!')
 
-            result_url = r.headers.get('Location')
-            print('URL:', result_url)
+        result_url = r.headers.get('Location')
+        print('URL:', result_url)
 
     def publish(self):
-        config = parse_config(self.args.config)
+        for file in self.args.files:
+            config = self.config_from_bundle(file)
+            name = config.get('name')
 
-        name = config.get('name')
-
-        scripts = self.fetch_scripts()
-        if scripts and any(name == script.get('name') for script in scripts):
-            self.update()
-        else:
-            pass  # FIXME: Remove comment
-            # self.upload()
+            scripts = self.fetch_scripts()
+            if scripts and any(name == script.get('name') for script in scripts):
+                self.update(file)
+            else:
+                pass  # FIXME: Remove comment
+                # self.upload(file)
 
 
 def parse_config(config):
@@ -552,9 +563,6 @@ def _build_command(args):
         # Already exists
         pass
 
-    import tarfile
-    import zipfile
-
     if args.type.startswith('tar'):
         # mode = ''
         # if args.type == 'tar':
@@ -602,7 +610,7 @@ def main():
     common_parser.add_argument('--verbose', '-v', action='count', default=0,
                                help='set logging verbosity')
     common_parser.add_argument('--config', '-c',
-                               help='set configuration file. '
+                               help='set configuration file name. '
                                'Default file is "%s"' % CONFIG_FILENAME,
                                default=CONFIG_FILENAME)
 
