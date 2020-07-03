@@ -24,6 +24,8 @@ logger.addHandler(logging.StreamHandler())
 
 from .__version__ import __version__, __author__, __email__  # noqa
 
+CONFIG_FILENAME = 'vipers.json'
+
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
 
@@ -86,6 +88,7 @@ class BaseClient(object):
 class ViperClient(BaseClient):
     BASE_URL = 'https://www.vim.org'
     USER_AGENT = 'viper/%s' % __version__
+    MAX_FILE_SIZE = '10485760'
 
     def __init__(self, args=None):
         super(ViperClient, self).__init__()
@@ -212,6 +215,26 @@ class ViperClient(BaseClient):
         info = self.fetch_info()
         return info['scripts']
 
+    def versions(self, script_id):
+        # https://www.vim.org/scripts/script.php?script_id=[id]
+        url = urljoin(self.BASE_URL, 'scripts', 'script.php?script_id=%d' % int(script_id))
+        r = requests.get(url, headers=self.headers)
+        self.update_headers({
+            'Referer': url
+        })
+        if r.status_code != 200:
+            raise ViperError('error occurred while fetching script detail')
+        html = BeautifulSoup(r.text, 'html.parser')
+        error_header = html.find('p', class_='errorheader')
+        if error_header:
+            raise ViperError(error_header.find_next_sibling('p').string)
+        script_table = html.find('th', string='package').find_parent('table')
+        ret = []
+        for row in script_table.find_all('tr')[1:]:  # Skip header
+            package, version, date, required, user, note = row.find_all('td')
+            ret.append(version.string)
+        return ret
+
     def script_version(self, script_id):
         url = urljoin(self.BASE_URL, 'scripts', 'add_script_version.php?script_id=%d' % int(script_id))
         r = requests.get(url, headers=self.headers)
@@ -225,55 +248,117 @@ class ViperClient(BaseClient):
         version = heading.find_next_sibling('p').string.strip().split(' ')[-1]
         return version
 
+    def update(self):
+        if not sys.stdin.isatty():
+            raise ViperError('update must be interactive mode')
+
+        scripts = self.fetch_scripts()
+
+        def find_id(name):
+            for script in scripts:
+                if script.get('name') == name:
+                    return script.get('id')
+
+        for file in self.args.files:
+            # TODO: Read configuration from bundle
+            config = parse_config(self.args.config)
+
+            script_id = find_id(config.get('name'))
+            logger.debug('id: %s' % script_id)
+
+            comment = ''
+            while not comment:
+                try:
+                    comment = input('version comment: ')
+                except KeyboardInterrupt:
+                    print('cancel', file=sys.stderr)
+                    sys.exit(1)
+
+            data = {
+                'MAX_FILE_SIZE': self.MAX_FILE_SIZE,
+                'vim_version': config.get('required'),
+                'script_version': config.get('version'),
+                'version_comment': comment,
+                'script_id': script_id,
+                'add_script': 'upload'
+            }
+            files = {'script_file': open(file, 'rb')}
+            # https://www.vim.org/scripts/add_script_version.php?script_id=[id]
+            url = urljoin(self.BASE_URL, 'scripts', 'add_script_version.php?script_id=%s' % script_id)
+            logger.debug('url: %s' % url)
+            logger.debug('data: %r' % data)
+
+            versions = self.versions(script_id)
+            logger.debug('versions: %r' % versions)
+
+            version = config.get('version')
+            if version in versions:
+                # raise ViperError("cannot update script: version '%s' already exists!" % version)
+                continue
+
+    def upload(self):
+        for file in self.args.files:
+            # TODO: Read configuration from bundle
+            config = parse_config(self.args.config)
+            description = self.args.description or config.get('description')
+            if not description:
+                # TODO: Find README* files
+                wildcard_filter = lambda x: re.match(wildcard(escape('README*')), x)
+                files = list(filter(wildcard_filter, os.listdir('.')))
+                if not files:
+                    raise ViperError('description required')
+                with open(files[0], 'rt') as f:
+                    description = f.read()
+            # Form data
+            data = {
+                'ACTION': 'UPLOAD_NEW',
+                'MAX_FILE_SIZE': self.MAX_FILE_SIZE,
+                'script_name': config.get('name'),
+                # 'script_file': None,  # binary
+                'script_type': config.get('type'),
+                'vim_version': config.get('required'),
+                'script_version': config.get('version'),
+                'summary': config.get('summary'),
+                'description': description,
+                'install_details': config.get('install_details', ''),
+                'add_script': 'upload'
+            }
+            files = {'script_file': open(file, 'rb')}
+            url = urljoin(self.BASE_URL, 'scripts', 'add_script.php')
+
+            if (self.args.interactive
+                    and not confirm('"%s" [(y)es/(n)o]: ' % file)):
+                return
+
+            logger.debug('data: %s' % data)
+            print('uploading...')
+
+            r = requests.post(url, data=data, files=files, headers=self.headers,
+                            allow_redirects=False)
+
+            logger.debug('text: %s' % r.text)
+            logger.debug('headers: %r' % r.headers)
+            logger.debug('status_code: %r' % r.status_code)
+
+            if r.status_code != 302:
+                print('something goes wrong', file=sys.stderr)
+                return 1
+            print('Done!')
+
+            result_url = r.headers.get('Location')
+            print('URL:', result_url)
+
     def publish(self):
         config = parse_config(self.args.config)
-        description = self.args.description or config.get('description')
-        if not description:
-            # TODO: Find README* files
-            wildcard_filter = lambda x: re.match(wildcard(escape('README*')), x)
-            files = list(filter(wildcard_filter, os.listdir('.')))
-            if not files:
-                raise ViperError('description required')
-            with open(files[0], 'rt') as f:
-                description = f.read()
-        # Form data
-        data = {
-            'ACTION': 'UPLOAD_NEW',
-            'MAX_FILE_SIZE': '10485760',
-            'script_name': config.get('name'),
-            # 'script_file': None,  # binary
-            'script_type': config.get('type'),
-            'vim_version': config.get('required'),
-            'script_version': config.get('version'),
-            'summary': config.get('summary'),
-            'description': description,
-            'install_details': config.get('install_details', ''),
-            'add_script': 'upload'
-        }
-        files = {'script_file': open(self.args.file, 'rb')}
-        url = urljoin(self.BASE_URL, 'scripts', 'add_script.php')
 
-        if (self.args.interactive
-                and not confirm('"%s" [(y)es/(n)o]: ' % self.args.file)):
-            return
+        name = config.get('name')
 
-        logger.debug('data: %s' % data)
-        print('uploading...')
-
-        r = requests.post(url, data=data, files=files, headers=self.headers,
-                          allow_redirects=False)
-
-        logger.debug('text: %s' % r.text)
-        logger.debug('headers: %r' % r.headers)
-        logger.debug('status_code: %r' % r.status_code)
-
-        if r.status_code != 302:
-            print('something goes wrong', file=sys.stderr)
-            return 1
-        print('Done!')
-
-        result_url = r.headers.get('Location')
-        print('URL:', result_url)
+        scripts = self.fetch_scripts()
+        if scripts and any(name == script.get('name') for script in scripts):
+            self.update()
+        else:
+            pass  # FIXME: Remove comment
+            # self.upload()
 
 
 def parse_config(config):
@@ -518,8 +603,8 @@ def main():
                                help='set logging verbosity')
     common_parser.add_argument('--config', '-c',
                                help='set configuration file. '
-                               'Default file is "vipers.json"',
-                               default='vipers.json')
+                               'Default file is "%s"' % CONFIG_FILENAME,
+                               default=CONFIG_FILENAME)
 
     parser = argparse.ArgumentParser(parents=[common_parser])
     subparsers = parser.add_subparsers(dest='command')
@@ -529,7 +614,7 @@ def main():
                                         help='create configuration file')
     init_parser.add_argument('--output', '-o',
                              type=str,
-                             default='vipers.json')
+                             default=CONFIG_FILENAME)
     init_parser.add_argument('--name', '-n')
     init_parser.add_argument('--type', '-t',
                              choices=[
@@ -608,7 +693,7 @@ def main():
     publish_parser.add_argument('--password', '-p')
     publish_parser.add_argument('--description', '-d')
     publish_parser.add_argument('--interactive', '-i', action='store_true')
-    publish_parser.add_argument('file', type=str)
+    publish_parser.add_argument('files', action='append')
     publish_parser.set_defaults(func=_publish_command)
 
     clean_parser = subparsers.add_parser('clean')
