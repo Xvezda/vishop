@@ -208,7 +208,7 @@ def parse_config(config):
         return json.load(f)
 
 
-def init(args):
+def _init_command(args):
     config = {}
     fields = [
         {'name': 'name'},
@@ -296,7 +296,7 @@ def init(args):
     print('Done!')
 
 
-def build(args):
+def _build_command(args):
     logger.info('collecting files...')
     config = parse_config(args.config)
 
@@ -409,13 +409,13 @@ def build(args):
     print('Done!')
 
 
-def publish(args):
+def _publish_command(args):
     client = ViperClient(args)
     client.login()
     client.publish()
 
 
-def clean(args):
+def _clean_command(args):
     import shutil
     if (args.interactive
             and not confirm('"%s" will be deleted. are you sure? [(y)es/(n)o]: '
@@ -477,7 +477,7 @@ def main():
     init_parser.add_argument('--description', '-d', type=str)
     init_parser.add_argument('--install-details', '-D', type=str)
     init_parser.add_argument('--private', '-p', type=bool, default=False)
-    init_parser.set_defaults(func=init)
+    init_parser.set_defaults(func=_init_command)
 
     build_parser = subparsers.add_parser('build', parents=[common_parser],
                                          help='create plugin bundle to publish')
@@ -513,7 +513,7 @@ def main():
                               help='set output file type')
     build_parser.add_argument('--output', '-o', type=str, default='dist')
     build_parser.add_argument('paths', nargs='*')
-    build_parser.set_defaults(func=build)
+    build_parser.set_defaults(func=_build_command)
 
     # TODO: Option for non-build publishing
     #       Use README* file for description
@@ -524,12 +524,12 @@ def main():
     publish_parser.add_argument('--description', '-d')
     publish_parser.add_argument('--interactive', '-i', action='store_true')
     publish_parser.add_argument('file', type=str)
-    publish_parser.set_defaults(func=publish)
+    publish_parser.set_defaults(func=_publish_command)
 
     clean_parser = subparsers.add_parser('clean')
     clean_parser.add_argument('--interactive', '-i', action='store_true')
     clean_parser.add_argument('--path', '-p', type=str, default='dist')
-    clean_parser.set_defaults(func=clean)
+    clean_parser.set_defaults(func=_clean_command)
 
     args = parser.parse_args()
 
