@@ -7,30 +7,32 @@
 # https://opensource.org/licenses/MIT.
 
 from os import path
+from setuptools import setup, find_packages
 
-from setuptools import setup
-from version import VERSION, AUTHOR, AUTHOR_EMAIL
 
 here = path.abspath(path.dirname(__file__))
+
+with open(path.join(here, 'vipers', '__version__.py')) as f:
+    exec(f.read())
 
 with open(path.join(here, 'README.md')) as f:
     long_description = f.read()
 
 setup(
     name='vipers',
-    version=VERSION,
+    version=__version__,
     description='Vipers is command line VIM script publisher client.',
     long_description=long_description,
     long_description_content_type='text/markdown',
     license='MIT',
     url='https://github.com/Xvezda/vipers',
-    author=AUTHOR,
-    author_email=AUTHOR_EMAIL,
+    author=__author__,
+    author_email=__email__,
     classifiers=[
         'Environment :: Console',
         'Topic :: Text Editors',
         'Topic :: System :: Archiving :: Packaging',
-        'Development Status :: 2 - Pre-Alpha',
+        'Development Status :: 3 - Alpha',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
@@ -42,9 +44,10 @@ setup(
     ],
     entry_points='''
         [console_scripts]
-        vipers=vipers:main
+        vipers=vipers.core:main
     ''',
     keywords='VIM, VI, editor, plugin, package manager, utility, publishing',
-    py_modules=['vipers', 'version'],
-    install_requires=['requests'],
+    packages=find_packages(),
+    install_requires=['requests', 'BeautifulSoup4'],
+    zip_safe=False
 )

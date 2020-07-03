@@ -6,8 +6,8 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT.
 
-VERSION = '0.0.1'
-AUTHOR = 'Xvezda'
-AUTHOR_EMAIL = 'xvezda@naver.com'
+__version__ = '0.0.1'
+__author__ = 'Xvezda'
+__email__ = 'xvezda@naver.com'
 
 
