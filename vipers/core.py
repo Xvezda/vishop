@@ -20,7 +20,7 @@ import logging
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 
-from version import VERSION, AUTHOR, AUTHOR_EMAIL
+from .__version__ import __version__, __author__, __email__  # noqa
 
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
@@ -83,7 +83,7 @@ class BaseClient(object):
 
 class ViperClient(BaseClient):
     BASE_URL = 'https://www.vim.org'
-    USER_AGENT = 'viper/%s' % VERSION
+    USER_AGENT = 'viper/%s' % __version__
 
     def __init__(self, args=None):
         super(ViperClient, self).__init__()
