@@ -14,7 +14,9 @@ import re
 import os
 import sys
 import json
+
 import requests  # noqa
+from bs4 import BeautifulSoup  # noqa
 
 import logging
 logger = logging.getLogger(__name__)
@@ -156,6 +158,17 @@ class ViperClient(BaseClient):
         # https://www.vim.org/account/index.php
         url = urljoin(self.BASE_URL, 'account', 'index.php')
         r = requests.get(url, headers=self.headers)
+        if r.status_code != 200:
+            raise ViperError('error occurred while fetching account informations')
+        html = BeautifulSoup(r.text, 'html.parser')
+        contrib_title = html.find('h1', string='Script Contributions')
+        if not contrib_title:
+            raise ViperError('unexpected error occurred: cannot find contribute title')
+        contrib_table = contrib_title.find_next_sibling('table')
+        print('plugins:')
+        for row in contrib_table.find_all('tr'):
+            name, desc, _, _ = row.find_all('td')
+            print(' '*2 + '%s: %s' % (name.string, desc.string))
 
     def publish(self):
         config = parse_config(self.args.config)
@@ -304,6 +317,7 @@ def _init_command(args):
 def _info_command(args):
     client = ViperClient(args)
     client.login()
+    client.info()
 
 
 def _build_command(args):
@@ -491,6 +505,8 @@ def main():
 
     info_parser = subparsers.add_parser('info', parents=[common_parser],
                                         help='get informations from website')
+    info_parser.add_argument('--username', '-u')
+    info_parser.add_argument('--password', '-p')
     info_parser.set_defaults(func=_info_command)
 
     build_parser = subparsers.add_parser('build', parents=[common_parser],
