@@ -12,20 +12,20 @@ from setuptools import setup, find_packages
 
 here = path.abspath(path.dirname(__file__))
 
-with open(path.join(here, 'vipers', '__version__.py')) as f:
+with open(path.join(here, 'vishop', '__version__.py')) as f:
     exec(f.read())
 
 with open(path.join(here, 'README.md')) as f:
     long_description = f.read()
 
 setup(
-    name='vipers',
+    name='vishop',
     version=__version__,
-    description='Vipers is command line VIM script publisher client.',
+    description='Vishop is command line VIM script publisher client.',
     long_description=long_description,
     long_description_content_type='text/markdown',
     license='MIT',
-    url='https://github.com/Xvezda/vipers',
+    url='https://github.com/Xvezda/vishop',
     author=__author__,
     author_email=__email__,
     classifiers=[
@@ -44,7 +44,7 @@ setup(
     ],
     entry_points='''
         [console_scripts]
-        vipers=vipers.core:main
+        vishop=vishop.core:main
     ''',
     keywords='VIM, VI, editor, plugin, package manager, utility, publishing',
     packages=find_packages(),
