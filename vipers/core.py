@@ -155,20 +155,75 @@ class ViperClient(BaseClient):
         print('login success!')
 
     def info(self):
+        information = self.fetch_info()
+
+        print('user name:', information.get('user_name'))
+        print('first name:', information.get('first_name'))
+        print('last name:', information.get('last_name'))
+        print('email:', information.get('email'))
+
+        print('scripts:')
+        for script in information.get('scripts', []):
+            print(' '*2 + '%s: %s' % (script.get('name'), script.get('summary')))
+
+    def fetch_info(self):
+        ret = {}
         # https://www.vim.org/account/index.php
         url = urljoin(self.BASE_URL, 'account', 'index.php')
         r = requests.get(url, headers=self.headers)
+        self.update_headers({
+            'Referer': url
+        })
         if r.status_code != 200:
             raise ViperError('error occurred while fetching account informations')
         html = BeautifulSoup(r.text, 'html.parser')
+
+        ret['user_name'] = html.find('td', string='user name').find_next_sibling('td').string
+        ret['first_name'] = html.find('td', string='first name').find_next_sibling('td').string
+        ret['last_name'] = html.find('td', string='last name').find_next_sibling('td').string
+        ret['email'] = html.find('td', string='email').find_next_sibling('td').string
+        # ret['homepage'] = html.find('td', string='homepage').find_next_sibling('td').string
+
         contrib_title = html.find('h1', string='Script Contributions')
         if not contrib_title:
             raise ViperError('unexpected error occurred: cannot find contribute title')
         contrib_table = contrib_title.find_next_sibling('table')
-        print('plugins:')
+
+        def get_id_by_url(url):
+            id_match = re.search(r'script_id=(\d+)', url)
+            if not id_match:
+                raise ViperError('cannot find script id')
+            return id_match.group(1)
+
+        scripts = []
         for row in contrib_table.find_all('tr'):
-            name, desc, _, _ = row.find_all('td')
-            print(' '*2 + '%s: %s' % (name.string, desc.string))
+            name, summary, _, _ = row.find_all('td')
+            script_href = name.find('a')['href']
+            script_id = get_id_by_url(script_href)
+            scripts.append({
+                'id': script_id,
+                'name': name.string,
+                'summary': summary.string
+            })
+        ret['scripts'] = scripts
+        return ret
+
+    def fetch_scripts(self):
+        info = self.fetch_info()
+        return info['scripts']
+
+    def script_version(self, script_id):
+        url = urljoin(self.BASE_URL, 'scripts', 'add_script_version.php?script_id=%d' % int(script_id))
+        r = requests.get(url, headers=self.headers)
+        self.update_headers({
+            'Referer': url
+        })
+        if r.status_code != 200:
+            raise ViperError('error occurred while fetching script detail')
+        html = BeautifulSoup(r.text, 'html.parser')
+        heading = html.find('h1', string=re.compile('Upload a new version of'))
+        version = heading.find_next_sibling('p').string.strip().split(' ')[-1]
+        return version
 
     def publish(self):
         config = parse_config(self.args.config)
