@@ -14,7 +14,7 @@ import re
 import os
 import sys
 import json
-import requests
+import requests  # noqa
 
 import logging
 logger = logging.getLogger(__name__)
@@ -26,11 +26,11 @@ PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
 
 if PY2:
-    input = raw_input
+    input = raw_input  # noqa
 
 def u(text):
     if PY2:
-        return unicode(text).encode('utf8')
+        return unicode(text).encode('utf8')  # noqa
     return text
 
 
@@ -151,6 +151,11 @@ class ViperClient(BaseClient):
         if re.search('Authentication failed', r.text):
             raise ViperError('authentication failed')
         print('login success!')
+
+    def info(self):
+        # https://www.vim.org/account/index.php
+        url = urljoin(self.BASE_URL, 'account', 'index.php')
+        r = requests.get(url, headers=self.headers)
 
     def publish(self):
         config = parse_config(self.args.config)
@@ -296,6 +301,11 @@ def _init_command(args):
     print('Done!')
 
 
+def _info_command(args):
+    client = ViperClient(args)
+    client.login()
+
+
 def _build_command(args):
     logger.info('collecting files...')
     config = parse_config(args.config)
@@ -427,7 +437,7 @@ def _clean_command(args):
 
 def main():
     try:
-        import dotenv
+        import dotenv  # noqa
         dotenv.load_dotenv()
     except ImportError:
         pass
@@ -478,6 +488,10 @@ def main():
     init_parser.add_argument('--install-details', '-D', type=str)
     init_parser.add_argument('--private', '-p', type=bool, default=False)
     init_parser.set_defaults(func=_init_command)
+
+    info_parser = subparsers.add_parser('info', parents=[common_parser],
+                                        help='get informations from website')
+    info_parser.set_defaults(func=_info_command)
 
     build_parser = subparsers.add_parser('build', parents=[common_parser],
                                          help='create plugin bundle to publish')
