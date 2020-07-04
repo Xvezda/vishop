@@ -32,7 +32,7 @@ setup(
         'Environment :: Console',
         'Topic :: Text Editors',
         'Topic :: System :: Archiving :: Packaging',
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
