@@ -118,20 +118,26 @@ class VishopClient(BaseClient):
         if not self.password:
             import getpass
             self.password = getpass.getpass('password: ')
-    
-    def config_from_bundle(self, path):
-        if re.search(r'\.tar\.[a-z]+$', path):  # tar file
-            with tarfile.TarFile(path, 'r') as f:
-                filtered = filter(lambda x: x.endswith(self.args.config), f.getnames())
+
+    def file_from_bundle(self, bundle_path, file):
+        if re.search(r'\.tar\.[a-z]+$', bundle_path):  # tar file
+            with tarfile.TarFile(bundle_path, 'r') as f:
+                filtered = filter(lambda x: x.endswith(file), f.getnames())
                 try:
-                    config_name = sorted(list(filtered), key=len)[0]
+                    file = sorted(list(filtered), key=len)[0]
                 except IndexError:
-                    raise VishopError('cannot find configuration file from bundle')
-                return json.loads(f.extractfile(config_name).read())
-        elif re.search(r'\.zip$', path):  # zip file
-            with zipfile.ZipFile(path, 'r') as f:
-                return json.loads(f.read(self.args.config))
-        raise VishopError("file '%s' is not supported type" % path)
+                    raise VishopError('cannot find file from bundle')
+                return f.extractfile(file).read()
+        elif re.search(r'\.zip$', bundle_path):  # zip file
+            with zipfile.ZipFile(bundle_path, 'r') as f:
+                return f.read(file)
+        raise VishopError("file '%s' is not supported type" % bundle_path)
+
+    def config_from_bundle(self, path):
+        return json.loads(self.file_from_bundle(path, self.args.config))
+
+    def readme_from_bundle(self, path):
+        return self.file_from_bundle(path, 'README.md')
 
     def login(self):
         print('attempt to login...')
@@ -246,13 +252,18 @@ class VishopClient(BaseClient):
         if r.status_code != 200:
             raise VishopError('error occurred while fetching script detail')
         html = BeautifulSoup(r.text, 'html.parser')
+        logger.debug('html: %r' % html)
+
         error_header = html.find('p', class_='errorheader')
         if error_header:
             raise VishopError(error_header.find_next_sibling('p').string)
         script_table = html.find('th', string='package').find_parent('table')
         ret = []
         for row in script_table.find_all('tr')[1:]:  # Skip header
-            package, version, date, required, user, note = row.find_all('td')
+            try:
+                package, version, date, required, user, note = row.find_all('td')
+            except ValueError:  # If there is more than 1 script versions, deleting button appears.
+                _, package, version, date, required, user, note = row.find_all('td')
             ret.append(version.string)
         return ret
 
@@ -315,6 +326,83 @@ class VishopClient(BaseClient):
         logger.debug('url: %s' % url)
         logger.debug('data: %r' % data)
 
+        print('updating...')
+        r = requests.post(url, data=data, files=files, headers=self.headers,
+                        allow_redirects=False)
+
+        logger.debug('text: %s' % r.text)
+        logger.debug('headers: %r' % r.headers)
+        logger.debug('status_code: %r' % r.status_code)
+
+        if r.status_code != 302:
+            raise VishopError('something goes wrong while updating script')
+
+        result_url = r.headers.get('Location')
+        self.update_headers({
+            'Referer': result_url
+        })
+
+        # Update details.
+        url = urljoin(self.BASE_URL, 'scripts', 'edit_script.php?script_id=%s' % script_id)
+        r = requests.get(url, headers=self.headers)
+
+        if r.status_code != 200:
+            raise VishopError('something goes wrong while fetching script details')
+
+        html = BeautifulSoup(r.text, 'html.parser')
+        logger.debug('html: %s' % html)
+
+        script_name = html.find('input', attrs={'name': 'script_name'})['value']
+        summary = html.find('input', attrs={'name': 'summary'})['value']
+        description = html.find('textarea', attrs={'name': 'description'}).string
+        install_details = html.find('textarea', attrs={'name': 'install_details'}).string
+
+        orig_details = [
+            script_name,
+            summary,
+            description,
+            install_details
+        ]
+
+        details = [
+            config.get('name'),
+            config.get('summary'),
+            self.args.description or config.get('description', self.readme_from_bundle(file)),
+            config.get('install_details', '')
+        ]
+
+        logger.debug('orig_details: %r' % orig_details)
+        logger.debug('details: %r' % details)
+
+        # Compare script details
+        is_differ = False
+        for orig, curr in zip(orig_details, details):
+            if orig != curr:
+                is_differ = True
+                break
+        if is_differ:
+            print('updating script details...')
+            # Same url but post method
+            data = {
+                'script_id': script_id,
+                'script_name': details[0],
+                'summary': details[1],
+                'description': details[2],
+                'install_details': details[3],
+                'save': 'update'
+            }
+            r = requests.post(url, data=data, headers=self.headers,
+                              allow_redirects=False)
+            logger.debug('text: %s' % r.text)
+            logger.debug('headers: %r' % r.headers)
+            logger.debug('status_code: %r' % r.status_code)
+            if r.status_code != 302:
+                raise VishopError('something goes wrong while updating script details')
+            print('script details updated!')
+
+        print('Done!')
+        print('URL:', result_url)
+
     def upload(self, file):
         config = self.config_from_bundle(file)
         description = self.args.description or config.get('description')
@@ -357,8 +445,7 @@ class VishopClient(BaseClient):
         logger.debug('status_code: %r' % r.status_code)
 
         if r.status_code != 302:
-            print('something goes wrong', file=sys.stderr)
-            return 1
+            raise VishopError('something goes wrong')
         print('Done!')
 
         result_url = r.headers.get('Location')
@@ -741,7 +828,7 @@ def main():
         if args.verbose == 2:
             import traceback
             print(traceback.format_exc(), file=sys.stderr)
-        parser.error(err)
+        print(err, file=sys.stderr)
 
 
 if __name__ == '__main__':
