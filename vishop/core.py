@@ -24,9 +24,9 @@ import logging
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 
-from .__version__ import __version__, __author__, __email__  # noqa
+from .__version__ import __title__, __version__, __author__, __email__  # noqa
 
-CONFIG_FILENAME = 'vipers.json'
+CONFIG_FILENAME = '%s.json' % __title__
 
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
@@ -91,6 +91,11 @@ class ViperClient(BaseClient):
     BASE_URL = 'https://www.vim.org'
     USER_AGENT = 'viper/%s' % __version__
     MAX_FILE_SIZE = '10485760'
+
+    # TODO: Remove repetitive code of requests
+    # e.g. Set referer header
+    #
+    # Using decorator?
 
     def __init__(self, args=None):
         super(ViperClient, self).__init__()
