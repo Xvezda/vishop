@@ -285,6 +285,14 @@ class VishopClient(BaseClient):
         script_id = find_id(config.get('name'))
         logger.debug('id: %s' % script_id)
 
+        versions = self.versions(script_id)
+        logger.debug('versions: %r' % versions)
+
+        version = config.get('version')
+        if version in versions:
+            raise VishopError("cannot update script: version '%s' already exists!" % version)
+            # return
+
         comment = ''
         while not comment:
             try:
@@ -306,14 +314,6 @@ class VishopClient(BaseClient):
         url = urljoin(self.BASE_URL, 'scripts', 'add_script_version.php?script_id=%s' % script_id)
         logger.debug('url: %s' % url)
         logger.debug('data: %r' % data)
-
-        versions = self.versions(script_id)
-        logger.debug('versions: %r' % versions)
-
-        version = config.get('version')
-        if version in versions:
-            raise VishopError("cannot update script: version '%s' already exists!" % version)
-            # return
 
     def upload(self, file):
         config = self.config_from_bundle(file)
@@ -735,7 +735,13 @@ def main():
         except AttributeError:
             build_parser.error('at least one file or path required')
 
-    args.func(args)
+    try:
+        args.func(args)
+    except VishopError as err:
+        if args.verbose == 2:
+            import traceback
+            print(traceback.format_exc(), file=sys.stderr)
+        parser.error(err)
 
 
 if __name__ == '__main__':
