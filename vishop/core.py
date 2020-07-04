@@ -120,16 +120,22 @@ class VishopClient(BaseClient):
             self.password = getpass.getpass('password: ')
 
     def file_from_bundle(self, bundle_path, file):
+        wildcard_filter = lambda x: re.search(wildcard(escape(file)), x)
         if re.search(r'\.tar\.[a-z]+$', bundle_path):  # tar file
             with tarfile.TarFile(bundle_path, 'r') as f:
-                filtered = filter(lambda x: x.endswith(file), f.getnames())
+                files = list(filter(wildcard_filter, f.getnames()))
                 try:
-                    file = sorted(list(filtered), key=len)[0]
+                    file = files[0]  # First match
                 except IndexError:
                     raise VishopError('cannot find file from bundle')
                 return f.extractfile(file).read()
         elif re.search(r'\.zip$', bundle_path):  # zip file
             with zipfile.ZipFile(bundle_path, 'r') as f:
+                files = list(filter(wildcard_filter, f.namelist()))
+                try:
+                    file = files[0]  # First match
+                except IndexError:
+                    raise VishopError('cannot find file from bundle')
                 return f.read(file)
         raise VishopError("file '%s' is not supported type" % bundle_path)
 
@@ -137,8 +143,7 @@ class VishopClient(BaseClient):
         return json.loads(self.file_from_bundle(path, self.args.config))
 
     def readme_from_bundle(self, path):
-        # TODO: Use wildcard
-        return self.file_from_bundle(path, 'README.md')
+        return self.file_from_bundle(path, 'README*')
 
     def login(self):
         print('attempt to login...')
