@@ -272,7 +272,6 @@ class ViperClient(BaseClient):
                 if script.get('name') == name:
                     return script.get('id')
 
-        # TODO: Read configuration from bundle
         config = self.config_from_bundle(file)
 
         script_id = find_id(config.get('name'))
@@ -309,11 +308,9 @@ class ViperClient(BaseClient):
             # return
 
     def upload(self, file):
-        # TODO: Read configuration from bundle
         config = self.config_from_bundle(file)
         description = self.args.description or config.get('description')
         if not description:
-            # TODO: Find README* files
             wildcard_filter = lambda x: re.match(wildcard(escape('README*')), x)
             files = list(filter(wildcard_filter, os.listdir('.')))
             if not files:
