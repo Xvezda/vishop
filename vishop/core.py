@@ -137,6 +137,7 @@ class VishopClient(BaseClient):
         return json.loads(self.file_from_bundle(path, self.args.config))
 
     def readme_from_bundle(self, path):
+        # TODO: Use wildcard
         return self.file_from_bundle(path, 'README.md')
 
     def login(self):
