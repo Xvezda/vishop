@@ -71,7 +71,7 @@ def escape(pattern):
     return unescape(re.escape(pattern), ['**', '*', '?'])
 
 
-class ViperError(Exception):
+class VishopError(Exception):
     pass
 
 
@@ -87,9 +87,9 @@ class BaseClient(object):
         self._headers.update(headers)
 
 
-class ViperClient(BaseClient):
+class VishopClient(BaseClient):
     BASE_URL = 'https://www.vim.org'
-    USER_AGENT = 'viper/%s' % __version__
+    USER_AGENT = 'vishop/%s' % __version__
     MAX_FILE_SIZE = '10485760'
 
     # TODO: Remove repetitive code of requests
@@ -98,19 +98,19 @@ class ViperClient(BaseClient):
     # Using decorator?
 
     def __init__(self, args=None):
-        super(ViperClient, self).__init__()
+        super(VishopClient, self).__init__()
         self.update_headers({
             'User-Agent': self.USER_AGENT
         })
 
         self.args = args
 
-        self.username = args.username or os.getenv('VIPERS_USERNAME')
-        self.password = args.password or os.getenv('VIPERS_PASSWORD')
+        self.username = args.username or os.getenv('VISHOP_USERNAME')
+        self.password = args.password or os.getenv('VISHOP_PASSWORD')
 
         if (not sys.stdin.isatty()
                 and (not self.username or not self.password)):
-            raise ViperError('username or password required')
+            raise VishopError('username or password required')
 
         if not self.username:
             self.username = input('username or email: ')
@@ -123,12 +123,15 @@ class ViperClient(BaseClient):
         if re.search(r'\.tar\.[a-z]+$', path):  # tar file
             with tarfile.TarFile(path, 'r') as f:
                 filtered = filter(lambda x: x.endswith(self.args.config), f.getnames())
-                config_name = sorted(list(filtered), key=len)[0]
+                try:
+                    config_name = sorted(list(filtered), key=len)[0]
+                except IndexError:
+                    raise VishopError('cannot find configuration file from bundle')
                 return json.loads(f.extractfile(config_name).read())
         elif re.search(r'\.zip$', path):  # zip file
             with zipfile.ZipFile(path, 'r') as f:
                 return json.loads(f.read(self.args.config))
-        raise ViperError("file '%s' is not supported type" % path)
+        raise VishopError("file '%s' is not supported type" % path)
 
     def login(self):
         print('attempt to login...')
@@ -159,8 +162,8 @@ class ViperClient(BaseClient):
         # Exception
         if r.status_code == 200:
             if re.search('try again later', r.text):
-                raise ViperError('maximum quota exceeded: %s' % r.text)
-            raise ViperError('unexpected exception occurred')
+                raise VishopError('maximum quota exceeded: %s' % r.text)
+            raise VishopError('unexpected exception occurred')
 
         url = r.headers.get('Location')
         r = requests.get(url,
@@ -172,7 +175,7 @@ class ViperClient(BaseClient):
 
         # Login failed
         if re.search('Authentication failed', r.text):
-            raise ViperError('authentication failed')
+            raise VishopError('authentication failed')
         print('login success!')
 
     def info(self):
@@ -196,7 +199,7 @@ class ViperClient(BaseClient):
             'Referer': url
         })
         if r.status_code != 200:
-            raise ViperError('error occurred while fetching account informations')
+            raise VishopError('error occurred while fetching account informations')
         html = BeautifulSoup(r.text, 'html.parser')
 
         ret['user_name'] = html.find('td', string='user name').find_next_sibling('td').string
@@ -207,13 +210,13 @@ class ViperClient(BaseClient):
 
         contrib_title = html.find('h1', string='Script Contributions')
         if not contrib_title:
-            raise ViperError('unexpected error occurred: cannot find contribute title')
+            raise VishopError('unexpected error occurred: cannot find contribute title')
         contrib_table = contrib_title.find_next_sibling('table')
 
         def get_id_by_url(url):
             id_match = re.search(r'script_id=(\d+)', url)
             if not id_match:
-                raise ViperError('cannot find script id')
+                raise VishopError('cannot find script id')
             return id_match.group(1)
 
         scripts = []
@@ -241,11 +244,11 @@ class ViperClient(BaseClient):
             'Referer': url
         })
         if r.status_code != 200:
-            raise ViperError('error occurred while fetching script detail')
+            raise VishopError('error occurred while fetching script detail')
         html = BeautifulSoup(r.text, 'html.parser')
         error_header = html.find('p', class_='errorheader')
         if error_header:
-            raise ViperError(error_header.find_next_sibling('p').string)
+            raise VishopError(error_header.find_next_sibling('p').string)
         script_table = html.find('th', string='package').find_parent('table')
         ret = []
         for row in script_table.find_all('tr')[1:]:  # Skip header
@@ -260,7 +263,7 @@ class ViperClient(BaseClient):
             'Referer': url
         })
         if r.status_code != 200:
-            raise ViperError('error occurred while fetching script detail')
+            raise VishopError('error occurred while fetching script detail')
         html = BeautifulSoup(r.text, 'html.parser')
         heading = html.find('h1', string=re.compile('Upload a new version of'))
         version = heading.find_next_sibling('p').string.strip().split(' ')[-1]
@@ -268,7 +271,7 @@ class ViperClient(BaseClient):
 
     def update(self, file):
         if not sys.stdin.isatty():
-            raise ViperError('update must be interactive mode')
+            raise VishopError('update must be interactive mode')
 
         scripts = self.fetch_scripts()
 
@@ -309,7 +312,7 @@ class ViperClient(BaseClient):
 
         version = config.get('version')
         if version in versions:
-            raise ViperError("cannot update script: version '%s' already exists!" % version)
+            raise VishopError("cannot update script: version '%s' already exists!" % version)
             # return
 
     def upload(self, file):
@@ -319,7 +322,7 @@ class ViperClient(BaseClient):
             wildcard_filter = lambda x: re.match(wildcard(escape('README*')), x)
             files = list(filter(wildcard_filter, os.listdir('.')))
             if not files:
-                raise ViperError('description required')
+                raise VishopError('description required')
             with open(files[0], 'rt') as f:
                 description = f.read()
         # Form data
@@ -468,7 +471,7 @@ def _init_command(args):
 
 
 def _info_command(args):
-    client = ViperClient(args)
+    client = VishopClient(args)
     client.login()
     client.info()
 
@@ -480,7 +483,7 @@ def _build_command(args):
     files = []
     for path in (args.path or [] + args.paths):
         if not os.path.isdir(path):
-            raise ViperError('"%s" is not a directory' % path)
+            raise VishopError('"%s" is not a directory' % path)
         for dirpath, dirnames, filenames in os.walk(path):
             for item in filenames:
                 if item.startswith('.'):
@@ -535,10 +538,10 @@ def _build_command(args):
         )
 
     if not args.type:
-        raise ViperError('type must be specified')
+        raise VishopError('type must be specified')
 
     if not files:
-        raise ViperError('at least 1 file required')
+        raise VishopError('at least 1 file required')
 
     if args.interactive:
         print('following files will be archived')
@@ -584,7 +587,7 @@ def _build_command(args):
 
 
 def _publish_command(args):
-    client = ViperClient(args)
+    client = VishopClient(args)
     client.login()
     client.publish()
 
