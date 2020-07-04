@@ -1,12 +1,12 @@
-# Vipers
+# Vishop
 
-[![Version](https://img.shields.io/pypi/v/vipers)](https://pypi.org/project/vipers)
-![License](https://img.shields.io/pypi/l/vipers)
-![Support](https://img.shields.io/pypi/pyversions/vipers)
+[![Version](https://img.shields.io/pypi/v/vishop)](https://pypi.org/project/vishop)
+![License](https://img.shields.io/pypi/l/vishop)
+![Support](https://img.shields.io/pypi/pyversions/vishop)
 
 > Publish your vim plugin right away!
 
-`Vipers` is VIM script publisher client.
+`vishop` is VIM script publisher client.
 Easily bundle and deploy to [vim.org](https://www.vim.org/scripts/index.php)
 on command line.
 
@@ -16,20 +16,20 @@ No web browser required!
 ## Installation
 
 ```sh
-pip install vipers
+pip install vishop
 ```
 
 ## Usage
 
 ```sh
-# Create configuration file (vipers.json)
-vipers init
+# Create configuration file (vishop.json)
+vishop init
 
 # Bundle
-vipers build .
+vishop build .
 
 # Publishing
-vipers publish dist/*.tar.gz
+vishop publish dist/*.tar.gz
 ```
 
 ## FAQ
@@ -37,8 +37,8 @@ vipers publish dist/*.tar.gz
 > Why Python?
 
 Because VIM supports python command (see `:help python`).
-It will much easier when you develop your own VIM plugin using vipers module,
-or even simple gluing in vimrc file; because it's written in Python.
+It will much easier when you develop your own VIM plugin using vishop module,
+or even simple gluing in vimrc file; because it's written in Python. And also _life is short_.
 
 
 ## License
