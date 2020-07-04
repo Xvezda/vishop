@@ -466,8 +466,7 @@ class VishopClient(BaseClient):
             if scripts and any(name == script.get('name') for script in scripts):
                 self.update(file)
             else:
-                pass  # FIXME: Remove comment
-                # self.upload(file)
+                self.upload(file)
 
 
 def parse_config(config):
