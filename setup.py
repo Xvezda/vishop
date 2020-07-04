@@ -12,7 +12,7 @@ from setuptools import setup, find_packages
 
 here = path.abspath(path.dirname(__file__))
 
-with open(path.join(here, 'vishop', '__version__.py')) as f:
+with open(path.join(here, 'vishop', '__about__.py')) as f:
     exec(f.read())
 
 with open(path.join(here, 'README.md')) as f:

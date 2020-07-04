@@ -24,7 +24,7 @@ import logging
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 
-from .__version__ import __title__, __version__, __author__, __email__  # noqa
+from .__about__ import __title__, __version__, __author__, __email__  # noqa
 
 CONFIG_FILENAME = '%s.json' % __title__
 
