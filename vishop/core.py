@@ -306,7 +306,6 @@ class VishopClient(BaseClient):
         logger.debug('versions: %r' % versions)
 
         version = config.get('version')
-        # FIXME
         if version in versions:
             raise VishopError("cannot update script: version '%s' already exists!" % version)
 
