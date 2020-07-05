@@ -306,9 +306,9 @@ class VishopClient(BaseClient):
         logger.debug('versions: %r' % versions)
 
         version = config.get('version')
+        # FIXME
         if version in versions:
             raise VishopError("cannot update script: version '%s' already exists!" % version)
-            # return
 
         comment = ''
         while not comment:
@@ -344,11 +344,11 @@ class VishopClient(BaseClient):
             raise VishopError('something goes wrong while updating script')
 
         result_url = r.headers.get('Location')
-        self.update_headers({
-            'Referer': result_url
-        })
 
         # Update details.
+        self.update_headers({
+            'Referer': urljoin(self.BASE_URL, 'account', 'index.php')
+        })
         url = urljoin(self.BASE_URL, 'scripts', 'edit_script.php?script_id=%s' % script_id)
         r = requests.get(url, headers=self.headers)
 
@@ -406,8 +406,8 @@ class VishopClient(BaseClient):
                 raise VishopError('something goes wrong while updating script details')
             print('script details updated!')
 
-        print('Done!')
-        print('URL:', result_url)
+        print('done!')
+        print('url:', result_url)
 
     def upload(self, file):
         config = self.config_from_bundle(file)
@@ -452,10 +452,10 @@ class VishopClient(BaseClient):
 
         if r.status_code != 302:
             raise VishopError('something goes wrong')
-        print('Done!')
+        print('done!')
 
         result_url = r.headers.get('Location')
-        print('URL:', result_url)
+        print('url:', result_url)
 
     def publish(self):
         for file in self.args.files:
@@ -559,7 +559,7 @@ def _init_command(args):
     with open(args.output, 'w') as f:
         json.dump(reversed_config, f,
                   indent=4, separators=(',', ': '))
-    print('Done!')
+    print('done!')
 
 
 def _info_command(args):
@@ -675,7 +675,7 @@ def _build_command(args):
             for file_ in files:
                 f.write(file_)
 
-    print('Done!')
+    print('done!')
 
 
 def _publish_command(args):
@@ -691,7 +691,7 @@ def _clean_command(args):
                             % args.path)):
         return 1
     shutil.rmtree(args.path, ignore_errors=True)
-    print('Done!')
+    print('done!')
 
 
 def main():
