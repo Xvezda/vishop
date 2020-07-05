@@ -10,7 +10,7 @@
 Easily bundle and deploy to [vim.org](https://www.vim.org/scripts/index.php)
 on command line.
 
-![Demo](https://gist.githubusercontent.com/Xvezda/cf7adb8b8fa22aadbece8d8329d13dfa/raw/65fefd4b624fdbf943b83c62c1ef4a26ff652e80/vim-readonly.gif)
+![Demo](https://gist.githubusercontent.com/Xvezda/cf7adb8b8fa22aadbece8d8329d13dfa/raw/vim-readonly.gif)
 
 No web browser required!
 
