@@ -43,6 +43,17 @@ It will much easier when you develop your own VIM plugin using vishop module,
 or even simple gluing in vimrc file; because it's written in Python. And also _life is short_.
 
 
+## Badge
+
+Add the badge to your project's `README.md`:
+```markdown
+[![Script manager: vishop](https://img.shields.io/badge/script%20manager-vishop-blueviolet)](https://github.com/Xvezda/vishop)
+```
+
+Preview:
+[![Script manager: vishop](https://img.shields.io/badge/script%20manager-vishop-blueviolet)](https://github.com/Xvezda/vishop)
+
+
 ## License
 
 Copyright (C) 2020 Xvezda
