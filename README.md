@@ -36,16 +36,22 @@ vishop publish dist/*.tar.gz
 
 ## FAQ
 
+> What's this projects motivation?
+
+I realized there are many vim script managers like [vim-plug](https://github.com/junegunn/vim-plug), [pathogen.vim](https://github.com/tpope/vim-pathogen) etc.
+But in the other hands, there was no command line tool for [vim.org](https://www.vim.org/). So I made one. :)
+
+Mostly inspired by many of dependency, package managers and publish, deployment tools.
+Such as [twine](https://pypi.org/project/twine), [yarn](https://yarnpkg.com/) and [npm](https://docs.npmjs.com/cli/npm).
+
+Vishop is now on beta, so be aware of bugs and [let me know](https://github.com/Xvezda/vishop/issues/new) if you find one.
+
+
 > Why Python?
 
 Because VIM supports python command (see `:help python`).
 It will much easier when you develop your own VIM plugin using vishop module,
 or even simple gluing in vimrc file; because it's written in Python. And also _life is short_.
-
-> Inspirations?
-
-Inspired by many of dependency, package managers and publish, deployment tools.
-Such as [twine](https://pypi.org/project/twine), [yarn](https://yarnpkg.com/) and [npm](https://docs.npmjs.com/cli/npm).
 
 
 ## Badge
