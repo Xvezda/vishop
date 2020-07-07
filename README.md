@@ -7,8 +7,8 @@
 > Publish your vim plugin right away!
 
 Vishop (**VI**M **S**cript **Ho**st **P**ublisher) is VIM script publisher client.
-Easily bundle and deploy to [vim.org](https://www.vim.org/scripts/index.php)
-on command line.
+
+Easily bundle and deploy to [vim.org](https://www.vim.org/scripts/index.php) on command line.
 
 ![Demo](https://gist.githubusercontent.com/Xvezda/cf7adb8b8fa22aadbece8d8329d13dfa/raw/vim-readonly.gif)
 
