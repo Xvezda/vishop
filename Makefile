@@ -3,7 +3,12 @@ PY3 = python3
 PY = $(PY2)
 TWINE = twine
 
+XARGS = xargs
+GREP = grep
+FIND = find
 SED = sed
+TR = tr
+RM = rm
 PACKAGE_NAME = vishop
 METADATA_FILE = $(PACKAGE_NAME)/__about__.py
 PACKAGE_VERSION = $(shell \
@@ -31,9 +36,9 @@ pkg_version:
 	@echo $(PACKAGE_VERSION)
 
 clean:
-	grep '/$$' .gitignore \
-		| xargs -I{} echo "\\! -path '*/{}*'" \
-		| tr $$'\n' ' ' | xargs find . -name '*.pyc' \
-		| xargs -n1 rm
+	$(GREP) '/$$' .gitignore \
+		| $(XARGS) -I{} echo "\\! -path '*/{}*'" \
+		| $(TR) $$'\n' ' ' | $(XARGS) $(FIND) . -name '*.pyc' \
+		| $(XARGS) -n1 $(RM)
 	$(PY) setup.py clean
 
