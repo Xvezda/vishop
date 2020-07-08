@@ -4,7 +4,7 @@
 ![License](https://img.shields.io/pypi/l/vishop)
 ![Support](https://img.shields.io/pypi/pyversions/vishop)
 
-> Publish your vim plugin right away!
+> Publish your vim script right away!
 
 Vishop (**VI**M **S**cript **Ho**st **P**ublisher) is VIM script publisher client.
 
@@ -24,6 +24,9 @@ pip install vishop
 ## Usage
 
 ```sh
+# Show help
+vishop --help  # or -h
+
 # Create configuration file (vishop.json)
 vishop init
 
@@ -38,10 +41,11 @@ vishop publish dist/*.tar.gz
 
 > What's this projects motivation?
 
-I realized there are many vim script managers like [vim-plug](https://github.com/junegunn/vim-plug), [pathogen.vim](https://github.com/tpope/vim-pathogen) etc.
+I realized there are many vim script managers like [vim-plug](https://github.com/junegunn/vim-plug), [pathogen.vim](https://github.com/tpope/vim-pathogen) and [vundle.vim](https://github.com/VundleVim/Vundle.vim) etc.
 But in the other hands, there was no command line tool for [vim.org](https://www.vim.org/). So I made one. :)
 
 Mostly inspired by many of dependency, package managers and publish, deployment tools.
+
 Such as [twine](https://pypi.org/project/twine), [yarn](https://yarnpkg.com/) and [npm](https://docs.npmjs.com/cli/npm).
 
 Vishop is now on beta, so be aware of bugs and [let me know](https://github.com/Xvezda/vishop/issues/new) if you find one.
