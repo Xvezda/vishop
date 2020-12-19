@@ -453,8 +453,14 @@ class VishopClient(BaseClient):
             raise VishopError('something goes wrong')
         print('done!')
 
-        result_url = r.headers.get('Location')
+        result_url = urljoin(self.BASE_URL, 'scripts', r.headers.get('Location'))
         print('url:', result_url)
+
+        if self.args.open_browser != 'none':
+            import webbrowser
+            new_browser_code = {'same': 0, 'window': 1, 'tab': 2}
+            webbrowser.open(result_url,
+                            new_browser_code.get(self.args.open_browser))
 
     def publish(self):
         for file in self.args.files:
@@ -797,6 +803,11 @@ def main():
     publish_parser.add_argument('--password', '-p')
     publish_parser.add_argument('--description', '-d')
     publish_parser.add_argument('--interactive', '-i', action='store_true')
+    publish_parser.add_argument('--open-browser', '-B',
+                                type=str.lower,
+                                choices=['none', 'same', 'window', 'tab'],
+                                default='none',
+                                help='open web browser to see result on GUI.')
     publish_parser.add_argument('files', action='append')
     publish_parser.set_defaults(func=_publish_command)
 
