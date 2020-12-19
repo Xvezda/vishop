@@ -406,7 +406,7 @@ class VishopClient(BaseClient):
             print('script details updated!')
 
         print('done!')
-        print('url:', result_url)
+        print('url:', urljoin(self.BASE_URL, 'scripts', result_url))
 
     def upload(self, file):
         config = self.config_from_bundle(file)
